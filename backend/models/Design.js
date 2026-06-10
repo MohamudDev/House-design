@@ -13,9 +13,25 @@ const designSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Please specify number of rooms']
   },
+  bathrooms: {
+    type: Number,
+    default: 1
+  },
+  kitchens: {
+    type: Number,
+    default: 1
+  },
+  carParking: {
+    type: Boolean,
+    default: false
+  },
   budgetEstimate: {
     type: Number,
     required: [true, 'Please specify a budget estimate']
+  },
+  price: {
+    type: Number,
+    default: 100 // Default price for fake payment simulation
   },
   description: {
     type: String,

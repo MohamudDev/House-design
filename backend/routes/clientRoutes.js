@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { getApprovedDesigns, getDesignById } = require('../controllers/clientController');
+const { getApprovedDesigns, getDesignById, getFavorites, toggleFavorite, rateEngineer } = require('../controllers/clientController');
+const { checkout, getPurchases } = require('../controllers/paymentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // All client routes are protected
@@ -8,6 +9,11 @@ router.use(protect);
 router.use(authorize('client'));
 
 router.get('/designs', getApprovedDesigns);
+router.get('/favorites', getFavorites);
+router.post('/favorites/:id', toggleFavorite);
 router.get('/designs/:id', getDesignById);
+router.post('/engineers/:id/rate', rateEngineer);
+router.post('/checkout/:designId', checkout);
+router.get('/purchases', getPurchases);
 
 module.exports = router;

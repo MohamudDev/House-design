@@ -2,9 +2,11 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, UploadCloud, FolderOpen, MessageSquare, Calendar, LogOut, Briefcase } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
+import { SocketContext } from '../../context/SocketContext';
 
 const EngineerSidebar = () => {
   const { logout } = useContext(AuthContext);
+  const { unreadCount } = useContext(SocketContext);
 
   const navLinks = [
     { name: 'Dashboard', path: '/engineer-dashboard', icon: <LayoutDashboard size={20} />, exact: true },
@@ -38,7 +40,12 @@ const EngineerSidebar = () => {
             }
           >
             {link.icon}
-            {link.name}
+            <span className="flex-1">{link.name}</span>
+            {link.name === 'Messages' && unreadCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

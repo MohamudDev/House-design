@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -11,6 +11,7 @@ const AdminSidebar = () => {
     { name: 'Manage Users', path: '/admin-dashboard/users', icon: <Users size={20} /> },
     { name: 'Manage Designs', path: '/admin-dashboard/designs', icon: <FileImage size={20} /> },
     { name: 'Reports', path: '/admin-dashboard/reports', icon: <FileBarChart size={20} /> },
+    { name: 'Inbox', path: '/admin-dashboard/contacts', icon: <MessageSquare size={20} /> },
     { name: 'Settings', path: '/admin-dashboard/settings', icon: <Settings size={20} /> },
   ];
 

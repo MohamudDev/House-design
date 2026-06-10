@@ -13,7 +13,11 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, acceptedTerms } = req.body;
+
+    if (role === 'engineer' && !acceptedTerms) {
+      return res.status(400).json({ message: 'Engineers must accept the Terms and Conditions' });
+    }
 
     // Check if user exists
     const userExists = await User.findOne({ email });
@@ -27,7 +31,8 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
-      role
+      role,
+      acceptedTerms: role === 'engineer' ? true : undefined
     });
 
     if (user) {

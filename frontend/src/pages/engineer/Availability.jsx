@@ -97,7 +97,7 @@ const Availability = () => {
         workingHours: profile.workingHours
       };
 
-      const baseUrl = 'http://localhost:5005';
+      const baseUrl = '';
       console.log('DIRECT SAVE to:', `${baseUrl}/api/auth/profile`, updateData);
       
       const response = await axios.put(`${baseUrl}/api/auth/profile`, updateData, config);
@@ -143,9 +143,9 @@ const Availability = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Availability & Profile</h1>
-        <p className="text-slate-500">Manage your professional presence and current work status.</p>
-        <p className="text-[10px] text-slate-400 mt-1">Database Sync ID: {JSON.parse(localStorage.getItem('userInfo'))?.id || 'Not Found'}</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Availability & Profile</h1>
+        <p className="text-slate-500 dark:text-slate-400">Manage your professional presence and current work status.</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Database Sync ID: {JSON.parse(localStorage.getItem('userInfo'))?.id || 'Not Found'}</p>
       </div>
 
       {message.text && (
@@ -157,14 +157,14 @@ const Availability = () => {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Availability Status */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Clock className="text-indigo-600" size={20} />
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+            <Clock className="text-indigo-600 dark:text-indigo-400" size={20} />
             Work Status
           </h2>
           
           <div className="flex flex-col md:flex-row gap-10 items-start">
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex-1 w-full">
+            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex-1 w-full">
               <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out">
                 <input 
                   type="checkbox" 
@@ -180,19 +180,19 @@ const Availability = () => {
                 ></label>
               </div>
               <div>
-                <p className="font-bold text-slate-800">{profile.isAvailable ? 'Available for new projects' : 'Currently Away / Fully Booked'}</p>
-                <p className="text-xs text-slate-500">Toggle your status to let clients know if you're taking new work.</p>
+                <p className="font-bold text-slate-800 dark:text-white">{profile.isAvailable ? 'Available for new projects' : 'Currently Away / Fully Booked'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Toggle your status to let clients know if you're taking new work.</p>
               </div>
             </div>
 
             <div className="flex-1 w-full">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Working Hours / Timezone</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Working Hours / Timezone</label>
               <input 
                 type="text" 
                 name="workingHours"
                 value={profile.workingHours}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
                 placeholder="e.g. 9 AM - 5 PM (GMT+3)" 
               />
             </div>
@@ -200,15 +200,15 @@ const Availability = () => {
         </div>
 
         {/* Professional Profile */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <UserIcon className="text-indigo-600" size={20} />
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+            <UserIcon className="text-indigo-600 dark:text-indigo-400" size={20} />
             Professional Profile
           </h2>
 
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
                 <Briefcase size={16} /> Specialization
               </label>
               <input 
@@ -216,19 +216,19 @@ const Availability = () => {
                 name="specialization"
                 value={profile.specialization}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
                 placeholder="e.g. Modern Residential, Sustainable Design, Urban Planning" 
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Professional Bio</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Professional Bio</label>
               <textarea 
                 name="bio"
                 value={profile.bio}
                 onChange={handleInputChange}
                 rows="5"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow resize-none" 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow resize-none" 
                 placeholder="Tell clients about your experience, style, and approach..."
               ></textarea>
             </div>

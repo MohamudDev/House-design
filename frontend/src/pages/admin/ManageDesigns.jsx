@@ -55,20 +55,20 @@ const ManageDesigns = () => {
     }
   };
 
-  if (loading) return <div className="text-slate-500 animate-pulse">Loading designs...</div>;
+  if (loading) return <div className="text-slate-500 dark:text-slate-400 animate-pulse">Loading designs...</div>;
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Manage Designs</h1>
-        <p className="text-slate-500">Review, approve, or reject uploaded house designs.</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Manage Designs</h1>
+        <p className="text-slate-500 dark:text-slate-400">Review, approve, or reject uploaded house designs.</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm font-semibold">
+              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm font-semibold">
                 <th className="p-4 pl-6">Design Title</th>
                 <th className="p-4">Engineer</th>
                 <th className="p-4">Type</th>
@@ -76,29 +76,29 @@ const ManageDesigns = () => {
                 <th className="p-4 pr-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {designs.map((design) => (
-                <tr key={design._id} className="hover:bg-slate-50 transition-colors">
+                <tr key={design._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                   <td className="p-4 pl-6">
                     <div className="flex items-center gap-3">
                       {design.images && design.images.length > 0 ? (
-                        <img src={`http://localhost:5005${design.images[0]}`} alt="thumbnail" className="w-12 h-12 rounded-lg object-cover bg-slate-100 border border-slate-200" />
+                        <img src={`${design.images[0]}`} alt="thumbnail" className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">No Img</div>
+                        <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">No Img</div>
                       )}
                       <div>
-                        <span className="font-semibold text-slate-800 block">{design.title}</span>
-                        <span className="text-xs text-slate-400">{new Date(design.createdAt).toLocaleDateString()}</span>
+                        <span className="font-semibold text-slate-800 dark:text-white block">{design.title}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(design.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </td>
                   <td className="p-4 text-slate-600">
                     <div className="flex flex-col">
-                      <span className="font-medium text-slate-800">{design.engineer?.name || 'Unknown'}</span>
-                      <span className="text-xs text-slate-500">{design.engineer?.email || 'N/A'}</span>
+                      <span className="font-medium text-slate-800 dark:text-white">{design.engineer?.name || 'Unknown'}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{design.engineer?.email || 'N/A'}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-slate-600">{design.houseType}</td>
+                  <td className="p-4 text-slate-600 dark:text-slate-300">{design.houseType}</td>
                   <td className="p-4">
                     {getStatusBadge(design.status)}
                   </td>
@@ -106,7 +106,7 @@ const ManageDesigns = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button 
                         onClick={() => setSelectedDesign(design)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                        className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" 
                         title="View Details"
                       >
                         <Eye size={18} />
@@ -136,7 +136,7 @@ const ManageDesigns = () => {
               
               {designs.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-slate-500">
+                  <td colSpan="5" className="p-8 text-center text-slate-500 dark:text-slate-400">
                     No designs have been uploaded yet.
                   </td>
                 </tr>
@@ -145,6 +145,14 @@ const ManageDesigns = () => {
           </table>
         </div>
       </div>
+
+      {/* 3D View Modal */}
+      {selectedDesign && (
+        <DesignViewModal 
+          design={selectedDesign} 
+          onClose={() => setSelectedDesign(null)} 
+        />
+      )}
     </div>
   );
 };

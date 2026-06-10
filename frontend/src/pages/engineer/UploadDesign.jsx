@@ -13,12 +13,16 @@ const UploadDesign = () => {
     title: '',
     houseType: 'Villa',
     rooms: '',
+    bathrooms: '',
+    kitchens: '',
+    carParking: false,
     budgetEstimate: '',
     description: ''
   });
   
   const [files, setFiles] = useState({
-    model3D: null
+    model3D: null,
+    images: null
   });
   
   const [modelPreview, setModelPreview] = useState(null);
@@ -26,7 +30,8 @@ const UploadDesign = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
   const handleFileChange = (e) => {
@@ -39,6 +44,8 @@ const UploadDesign = () => {
         if (modelPreview) URL.revokeObjectURL(modelPreview);
         setModelPreview(URL.createObjectURL(file));
       }
+    } else if (name === 'images') {
+      setFiles({ ...files, images: selectedFiles[0] });
     } else {
       setFiles({ ...files, [name]: selectedFiles[0] });
     }
@@ -49,14 +56,23 @@ const UploadDesign = () => {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
+    if (!files.images || !files.model3D) {
+      setLoading(false);
+      setMessage({ type: 'error', text: 'Please upload both a thumbnail image and a 3D model file.' });
+      return;
+    }
+
     const submitData = new FormData();
     submitData.append('title', formData.title);
     submitData.append('houseType', formData.houseType);
     submitData.append('rooms', formData.rooms);
+    submitData.append('bathrooms', formData.bathrooms);
+    submitData.append('kitchens', formData.kitchens);
+    submitData.append('carParking', formData.carParking);
     submitData.append('budgetEstimate', formData.budgetEstimate);
     submitData.append('description', formData.description);
 
-
+    if (files.images) submitData.append('images', files.images);
     if (files.model3D) submitData.append('model3D', files.model3D);
 
     try {
@@ -72,8 +88,8 @@ const UploadDesign = () => {
       setMessage({ type: 'success', text: 'Design uploaded successfully! It is now pending admin approval.' });
       
       // Reset form
-      setFormData({ title: '', houseType: 'Villa', rooms: '', budgetEstimate: '', description: '' });
-      setFiles({ model3D: null });
+      setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', carParking: false, budgetEstimate: '', description: '' });
+      setFiles({ model3D: null, images: null });
       
       // Redirect after 2 seconds
       setTimeout(() => navigate('/engineer-dashboard/designs'), 2000);
@@ -103,8 +119,8 @@ const UploadDesign = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Upload New Design</h1>
-        <p className="text-slate-500">Submit your architectural plans for gallery approval.</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Upload New Design</h1>
+        <p className="text-slate-500 dark:text-slate-400">Submit your architectural plans for gallery approval.</p>
       </div>
 
       {message.text && (
@@ -117,21 +133,31 @@ const UploadDesign = () => {
       <form 
         onSubmit={handleSubmit} 
         onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { /* allow enter in textarea */ } else if (e.key === 'Enter') { e.stopPropagation(); } }}
-        className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200"
+        className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors"
       >
         
         {/* Basic Info */}
         <div className="mb-8">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">1. Basic Information</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">1. Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Design Title</label>
-              <input type="text" name="title" required value={formData.title} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. Modern Lakefront Villa" />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Design Title</label>
+              <input 
+                type="text" 
+                name="title" 
+                required 
+                pattern="^[a-zA-Z\s]+$"
+                title="Title should only contain letters and spaces"
+                value={formData.title} 
+                onChange={handleInputChange} 
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
+                placeholder="e.g. Modern Lakefront Villa" 
+              />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">House Type</label>
-              <select name="houseType" value={formData.houseType} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow bg-white">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">House Type</label>
+              <select name="houseType" value={formData.houseType} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow">
                 <option value="Villa">Villa</option>
                 <option value="Apartment">Apartment</option>
                 <option value="Bungalow">Bungalow</option>
@@ -140,42 +166,79 @@ const UploadDesign = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Number of Rooms</label>
-              <input type="number" name="rooms" required min="1" value={formData.rooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 4" />
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bedrooms</label>
+              <input type="number" name="rooms" required min="1" value={formData.rooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 4" />
+            </div>
+
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bathrooms / Suuli</label>
+              <input type="number" name="bathrooms" required min="1" value={formData.bathrooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 2" />
+            </div>
+
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kitchens / Jiko</label>
+              <input type="number" name="kitchens" required min="1" value={formData.kitchens} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 1" />
+            </div>
+
+            <div className="col-span-1 md:col-span-1 flex items-center mt-6">
+              <label className="flex items-center cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" name="carParking" checked={formData.carParking} onChange={handleInputChange} className="sr-only" />
+                  <div className={`block w-10 h-6 rounded-full transition-colors ${formData.carParking ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.carParking ? 'transform translate-x-4' : ''}`}></div>
+                </div>
+                <div className="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Car Parking (Garaash)
+                </div>
+              </label>
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Estimated Budget (USD)</label>
-              <input type="number" name="budgetEstimate" required min="1000" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 250000" />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget (USD)</label>
+              <input type="number" name="budgetEstimate" required min="1" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 250" />
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-              <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow resize-none" placeholder="Describe the materials, architecture style, and unique features..."></textarea>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Description</label>
+              <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow resize-none" placeholder="Describe the materials, architecture style, and unique features..."></textarea>
             </div>
           </div>
         </div>
 
         {/* File Uploads */}
         <div className="mb-8">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">2. Design Files</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">2. Design Files</h2>
           <div className="space-y-6">
             
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Thumbnail Image */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2"><FileImage size={16} /> Thumbnail Image</label>
+                  <input type="file" name="images" required accept="image/*" onChange={handleFileChange} className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 dark:file:bg-slate-700 file:text-slate-700 dark:file:text-slate-300 hover:file:bg-slate-200 dark:hover:file:bg-slate-600 transition-colors" />
+                  {files.images && <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">{files.images.name}</p>}
+                </div>
+                {files.images && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Image Preview</label>
+                    <img src={URL.createObjectURL(files.images)} alt="Thumbnail Preview" className="w-full h-48 object-cover rounded-xl border border-slate-200 dark:border-slate-700" />
+                  </div>
+                )}
+              </div>
 
-            <div className="grid grid-cols-1 gap-6">
               {/* 3D Model */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2"><Box size={16} /> 3D Model File (.obj, .glb)</label>
-                  <input type="file" name="model3D" accept=".obj,.glb,.gltf,.fbx" onChange={handleFileChange} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors" />
-                  {files.model3D && <p className="text-xs text-indigo-600 mt-2">{files.model3D.name}</p>}
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2"><Box size={16} /> 3D Model File (.obj, .glb)</label>
+                  <input type="file" name="model3D" required accept=".obj,.glb,.gltf,.fbx" onChange={handleFileChange} className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 dark:file:bg-slate-700 file:text-slate-700 dark:file:text-slate-300 hover:file:bg-slate-200 dark:hover:file:bg-slate-600 transition-colors" />
+                  {files.model3D && <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">{files.model3D.name}</p>}
                 </div>
 
                 {modelPreview && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">3D Preview</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">3D Preview</label>
                     <ModelViewer url={modelPreview} />
                   </div>
                 )}

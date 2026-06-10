@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   --color-primary: #1d4ed8;
   --color-secondary: #9333ea;
@@ -7,6 +9,36 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans;
+    @apply bg-slate-50 text-slate-900 font-sans dark:bg-slate-900 dark:text-white transition-colors duration-300;
+  }
+}
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+  
+  /* Hide the sidebar and navigation when printing */
+  aside, nav, header {
+    display: none !important;
+  }
+
+  /* Make the main content take full width */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Hide the export button and filters during print */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure charts fit on the page */
+  #report-content {
+    page-break-inside: avoid;
+    background: white !important;
+    margin: 0 !important;
   }
 }

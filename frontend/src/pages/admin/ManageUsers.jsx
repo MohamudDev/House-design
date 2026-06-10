@@ -57,20 +57,20 @@ const ManageUsers = () => {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6 text-slate-500 dark:text-slate-400">Loading...</div>;
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Manage Users</h1>
-        <p className="text-slate-500">Approve engineers and manage client accounts.</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Manage Users</h1>
+        <p className="text-slate-500 dark:text-slate-400">Approve engineers and manage client accounts.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b">
-              <tr className="text-slate-500 text-sm font-semibold">
+            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+              <tr className="text-slate-500 dark:text-slate-400 text-sm font-semibold">
                 <th className="p-4">Name</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Role</th>
@@ -78,15 +78,15 @@ const ManageUsers = () => {
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {users.map((user) => (
-                <tr key={user._id} className="border-b hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-medium text-slate-800">{user.name}</td>
-                  <td className="p-4 text-slate-600">{user.email}</td>
+                <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <td className="p-4 font-medium text-slate-800 dark:text-white">{user.name}</td>
+                  <td className="p-4 text-slate-600 dark:text-slate-300">{user.email}</td>
                   <td className="p-4 uppercase text-xs font-bold tracking-wider">
                     <span className={`px-2 py-1 rounded ${
-                      user.role === 'admin' ? 'bg-purple-50 text-purple-700' : 
-                      user.role === 'engineer' ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-700'
+                      user.role === 'admin' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' : 
+                      user.role === 'engineer' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                     }`}>
                       {user.role}
                     </span>
@@ -94,11 +94,11 @@ const ManageUsers = () => {
                   <td className="p-4">
                     {user.role === 'engineer' ? (
                       user.isApproved ? (
-                        <span className="text-emerald-600 flex items-center gap-1 text-sm font-medium"><Check size={16}/> Approved</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-sm font-medium"><Check size={16}/> Approved</span>
                       ) : (
-                        <span className="text-amber-600 flex items-center gap-1 text-sm font-medium"><ShieldAlert size={16}/> Pending</span>
+                        <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 text-sm font-medium"><ShieldAlert size={16}/> Pending</span>
                       )
-                    ) : <span className="text-slate-300">-</span>}
+                    ) : <span className="text-slate-300 dark:text-slate-600">-</span>}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2">
@@ -121,7 +121,7 @@ const ManageUsers = () => {
                       {user.role !== 'admin' && (
                         <button 
                           onClick={() => handleDelete(user._id)} 
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                           title="Delete User"
                         >
                           <Trash2 size={18}/>

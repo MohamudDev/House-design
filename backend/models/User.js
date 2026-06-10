@@ -37,7 +37,20 @@ const userSchema = new mongoose.Schema({
   bio: { type: String, default: '' },
   specialization: { type: String, default: '' },
   isAvailable: { type: Boolean, default: true },
-  workingHours: { type: String, default: '9 AM - 5 PM' }
+  workingHours: { type: String, default: '9 AM - 5 PM' },
+  walletBalance: { type: Number, default: 0 },
+  acceptedTerms: { type: Boolean, default: false },
+  ratings: [{
+    client: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isSatisfied: Boolean,
+    comment: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+  // Client specific fields
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Design'
+  }]
 }, {
   timestamps: true
 });

@@ -6,16 +6,21 @@ const {
   updateUserStatus, 
   deleteUser, 
   getDesigns, 
-  updateDesignStatus 
+  updateDesignStatus,
+  getAdminReports,
+  updateAdminSettings
 } = require('../controllers/adminController');
+const { getAllWithdrawals, updateWithdrawalStatus } = require('../controllers/walletController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Apply protection and specific role authorization to all routes in this file
 router.use(protect);
 router.use(authorize('admin'));
 
-// Stats Route
+// Stats & Reports Routes
 router.get('/stats', getAdminStats);
+router.get('/reports', getAdminReports);
+router.put('/settings', updateAdminSettings);
 
 // User Management Routes
 router.route('/users')
@@ -33,5 +38,11 @@ router.route('/designs')
 
 router.route('/designs/:id/status')
   .put(updateDesignStatus);
+
+// Withdrawal Routes
+router.route('/withdrawals')
+  .get(getAllWithdrawals);
+router.route('/withdrawals/:id/status')
+  .put(updateWithdrawalStatus);
 
 module.exports = router;

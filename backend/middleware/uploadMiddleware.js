@@ -21,11 +21,11 @@ const storage = multer.diskStorage({
 
 // Check File Type (optional, but good practice)
 function checkFileType(file, cb) {
-  // We'll accept common image types for images/plans and standard formats for 3D models
-  const filetypes = /jpeg|jpg|png|gif|pdf|dwg|dxf|obj|stl|gltf|glb|fbx/;
+  // We'll accept common image types for images/plans, standard formats for 3D models, and videos
+  const filetypes = /jpeg|jpg|png|gif|pdf|dwg|dxf|obj|stl|gltf|glb|fbx|mp4|webm|mov/;
   
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype) || file.mimetype.includes('image') || file.mimetype.includes('application') || file.mimetype.includes('model');
+  const mimetype = filetypes.test(file.mimetype) || file.mimetype.includes('image') || file.mimetype.includes('application') || file.mimetype.includes('model') || file.mimetype.includes('video');
 
   if (extname && mimetype) {
     return cb(null, true);

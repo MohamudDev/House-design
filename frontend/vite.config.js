@@ -7,20 +7,18 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5005',
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:5004',
         changeOrigin: true,
-        configure: (proxy, options) => {
-          proxy.on('error', (err, req, res) => {
-            console.log('PROXY ERROR', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
-          });
-          proxy.on('proxyRes', (proxyRes, req, res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-          });
-        },
       },
+      '/uploads': {
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:5004',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:5004',
+        ws: true,
+        changeOrigin: true,
+      }
     },
   },
 })

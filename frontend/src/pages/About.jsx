@@ -7,7 +7,7 @@ import { Target, Compass, Box, MessageSquare, ClipboardList, ChevronRight } from
 const About = () => {
   const { user } = useContext(AuthContext);
   return (
-    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans flex flex-col transition-colors duration-300">
       <Navbar />
 
       {/* Hero Section */}
@@ -36,25 +36,25 @@ const About = () => {
       </section>
 
       {/* Mission and Vision */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-900 transition-colors">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="bg-slate-50 p-10 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-6">
-                <Target size={28} className="text-blue-600" />
+            <div className="bg-slate-50 dark:bg-slate-800 p-10 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 rounded-2xl flex items-center justify-center mb-6">
+                <Target size={28} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">Our Mission</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Our Mission</h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                 To democratize access to world-class architectural design by connecting clients with top-tier engineers. We strive to make the design process transparent, interactive, and highly efficient.
               </p>
             </div>
             
-            <div className="bg-slate-50 p-10 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6">
-                <Compass size={28} className="text-indigo-600" />
+            <div className="bg-slate-50 dark:bg-slate-800 p-10 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mb-6">
+                <Compass size={28} className="text-indigo-600 dark:text-indigo-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">Our Vision</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Our Vision</h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                 To become the global standard platform where every architectural journey begins. We envision a future where designing a home is as immersive and exciting as living in it.
               </p>
             </div>
@@ -63,25 +63,25 @@ const About = () => {
       </section>
 
       {/* Core Features */}
-      <section className="py-20 bg-slate-50">
+      <section className="py-20 bg-slate-50 dark:bg-slate-800/50 transition-colors">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Platform Features</h2>
-            <p className="text-slate-600">Everything you need to seamlessly manage your architectural projects from initial concept to final blueprint.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Platform Features</h2>
+            <p className="text-slate-600 dark:text-slate-400">Everything you need to seamlessly manage your architectural projects from initial concept to final blueprint.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { icon: <Box size={24} />, title: '3D House Viewing', desc: 'Experience designs in immersive 3D before making any commitments.', bgColor: 'bg-blue-50', textColor: 'text-blue-600' },
-              { icon: <MessageSquare size={24} />, title: 'Direct Communication', desc: 'Chat in real-time with engineers to discuss modifications and updates.', bgColor: 'bg-purple-50', textColor: 'text-purple-600' },
-              { icon: <ClipboardList size={24} />, title: 'Project Management', desc: 'Track progress, manage files, and handle approvals all in one dashboard.', bgColor: 'bg-emerald-50', textColor: 'text-emerald-600' }
+              { icon: <Box size={24} />, title: '3D House Viewing', desc: 'Experience designs in immersive 3D before making any commitments.', bgColor: 'bg-blue-50 dark:bg-blue-900/30', textColor: 'text-blue-600 dark:text-blue-400' },
+              { icon: <MessageSquare size={24} />, title: 'Direct Communication', desc: 'Chat in real-time with engineers to discuss modifications and updates.', bgColor: 'bg-purple-50 dark:bg-purple-900/30', textColor: 'text-purple-600 dark:text-purple-400' },
+              { icon: <ClipboardList size={24} />, title: 'Project Management', desc: 'Track progress, manage files, and handle approvals all in one dashboard.', bgColor: 'bg-emerald-50 dark:bg-emerald-900/30', textColor: 'text-emerald-600 dark:text-emerald-400' }
             ].map((feature, idx) => (
-              <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:-translate-y-1 transition-transform duration-300">
+              <div key={idx} className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:-translate-y-1 transition-transform duration-300">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 ${feature.bgColor} ${feature.textColor}`}>
                   {feature.icon}
                 </div>
-                <h4 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h4>
-                <p className="text-slate-600">{feature.desc}</p>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">{feature.title}</h4>
+                <p className="text-slate-600 dark:text-slate-400">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -89,11 +89,11 @@ const About = () => {
       </section>
 
       {/* Team Members */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-900 transition-colors">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Meet the Team</h2>
-            <p className="text-slate-600">The passionate architects and technologists behind DesignSpace.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Meet the Team</h2>
+            <p className="text-slate-600 dark:text-slate-400">The passionate architects and technologists behind DesignSpace.</p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -102,8 +102,8 @@ const About = () => {
               { name: 'Michael Chen', role: 'Head of Engineering', img: '/team_member_2.png' },
               { name: 'David Okafor', role: 'Lead Developer', img: '/team_member_3.png' }
             ].map((member, idx) => (
-              <div key={idx} className="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100">
-                <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100">
+              <div key={idx} className="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                   <img 
                     src={member.img} 
                     alt={member.name} 
@@ -129,7 +129,7 @@ const About = () => {
           <p className="text-lg text-slate-300 mb-10">Join thousands of homeowners and engineers collaborating on our platform today.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              to={user?.role === 'client' ? '/client-dashboard' : '/login'} 
+              to={user ? (user.role === 'client' ? '/client-dashboard' : user.role === 'engineer' ? '/engineer-dashboard' : '/admin-dashboard') : '/login'} 
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
             >
               Explore Designs <ChevronRight size={20} />
