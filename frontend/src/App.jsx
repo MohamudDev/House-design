@@ -13,6 +13,7 @@ import ManageDesigns from './pages/admin/ManageDesigns';
 import AdminReports from './pages/admin/AdminReports';
 import AdminSettings from './pages/admin/AdminSettings';
 import ManageContacts from './pages/admin/ManageContacts';
+import ManageWithdrawals from './pages/admin/ManageWithdrawals';
 import ClientDashboard from './pages/ClientDashboard';
 import EngineerDashboard from './pages/EngineerDashboard';
 import EngineerOverview from './pages/engineer/EngineerOverview';
@@ -50,6 +51,7 @@ function App() {
             <Route path="users" element={<ManageUsers />} />
             <Route path="designs" element={<ManageDesigns />} />
             <Route path="reports" element={<AdminReports />} />
+            <Route path="withdrawals" element={<ManageWithdrawals />} />
             <Route path="contacts" element={<ManageContacts />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>

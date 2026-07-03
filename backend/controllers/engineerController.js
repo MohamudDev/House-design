@@ -71,6 +71,7 @@ exports.getEngineerStats = async (req, res) => {
     const totalEarnings = transactions.length > 0 ? transactions[0].totalEarnings : 0;
 
     // Messages are not fully implemented yet, returning placeholder 0
+    const messagesReceived = 0;
     const user = await User.findById(req.user._id);
     const walletBalance = user.walletBalance || 0;
 

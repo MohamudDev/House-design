@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import { Target, Compass, Box, MessageSquare, ClipboardList, ChevronRight } from 'lucide-react';
+import { Target, Compass, Box, MessageSquare, ClipboardList, ChevronRight, User } from 'lucide-react';
 
 const About = () => {
   const { user } = useContext(AuthContext);
@@ -96,24 +96,20 @@ const About = () => {
             <p className="text-slate-600 dark:text-slate-400">The passionate architects and technologists behind DesignSpace.</p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
             {[
-              { name: 'Sarah Jenkins', role: 'Chief Architect', img: '/team_member_1.png' },
-              { name: 'Michael Chen', role: 'Head of Engineering', img: '/team_member_2.png' },
-              { name: 'David Okafor', role: 'Lead Developer', img: '/team_member_3.png' }
+              { name: 'Mohamud', role: 'Programmer', gender: 'male' },
+              { name: 'Sadak', role: 'Programmer', gender: 'male' },
+              { name: 'Cabdi', role: 'Programmer', gender: 'male' },
+              { name: 'Fardowso', role: 'Programmer', gender: 'female' }
             ].map((member, idx) => (
-              <div key={idx} className="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                  <img 
-                    src={member.img} 
-                    alt={member.name} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+              <div key={idx} className="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex flex-col items-center pt-10 hover:-translate-y-1 transition-transform duration-300">
+                <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-inner ${member.gender === 'male' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-500 dark:text-blue-400' : 'bg-pink-100 dark:bg-pink-900/40 text-pink-500 dark:text-pink-400'}`}>
+                  <User size={64} />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80" />
-                <div className="absolute bottom-0 left-0 w-full p-6 text-left transform transition-transform duration-300">
-                  <h4 className="text-xl font-bold text-white mb-1">{member.name}</h4>
-                  <p className="text-blue-300 font-medium">{member.role}</p>
+                <div className="w-full bg-white dark:bg-slate-900 p-6 text-center border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{member.name}</h4>
+                  <p className="text-blue-600 dark:text-blue-400 font-medium">{member.role}</p>
                 </div>
               </div>
             ))}

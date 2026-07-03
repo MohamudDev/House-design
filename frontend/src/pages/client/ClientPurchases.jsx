@@ -90,7 +90,7 @@ const ClientPurchases = () => {
                 
                 <div className="flex justify-between items-center mb-4 text-sm font-semibold text-slate-600 dark:text-slate-300">
                   <span className="flex items-center gap-1 text-slate-500"><Clock size={14}/> {format(new Date(tx.createdAt), 'MMM d, yyyy')}</span>
-                  <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><DollarSign size={14}/> {tx.amount.toLocaleString()}</span>
+                  <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><DollarSign size={14}/> {(tx.amountPaid || 0).toLocaleString()}</span>
                 </div>
 
                 <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center gap-3">

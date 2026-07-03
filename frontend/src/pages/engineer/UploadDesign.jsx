@@ -196,7 +196,7 @@ const UploadDesign = () => {
 
             <div className="col-span-1 md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget (USD)</label>
-              <input type="number" name="budgetEstimate" required min="1" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 250" />
+              <input type="number" name="budgetEstimate" required min="0.1" step="0.1" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 250" />
             </div>
 
             <div className="col-span-1 md:col-span-2">
