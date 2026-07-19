@@ -6,6 +6,7 @@ import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Contact from './pages/Contact';
+import Services from './pages/Services';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOverview from './pages/admin/AdminOverview';
 import ManageUsers from './pages/admin/ManageUsers';
@@ -26,15 +27,18 @@ import ClientNavbar from './components/client/ClientNavbar';
 import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
+import InstallPWA from './components/InstallPWA';
 
 function App() {
   return (
     <AuthProvider>
       <SocketProvider>
         <Router>
+          <InstallPWA />
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
+          <Route path="/services" element={<Services />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/contact" element={<Contact />} />
