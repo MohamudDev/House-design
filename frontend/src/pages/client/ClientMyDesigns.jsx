@@ -17,7 +17,7 @@ const ClientMyDesigns = () => {
 
   const fetchClientDesigns = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages/client-designs`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/client-designs`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         }

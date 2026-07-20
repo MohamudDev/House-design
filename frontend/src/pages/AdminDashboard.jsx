@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import { useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Mail } from 'lucide-react';
+import { Mail, Menu } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -11,6 +11,7 @@ const AdminDashboard = () => {
   const [unreadContacts, setUnreadContacts] = useState([]);
   const [showPopover, setShowPopover] = useState(false);
   const [hasOpenedPopover, setHasOpenedPopover] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const popoverRef = useRef(null);
   const location = useLocation();
 
@@ -46,12 +47,20 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-300">
-      <AdminSidebar />
+      <AdminSidebar isOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
       
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
         {/* Top Header */}
-        <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 px-8 py-4 flex justify-between items-center z-10 transition-colors">
-          <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Control Panel</h2>
+        <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 px-4 md:px-8 py-4 flex justify-between items-center z-10 transition-colors">
+          <div className="flex items-center gap-3">
+            <button 
+              className="md:hidden p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Control Panel</h2>
+          </div>
           <div className="flex items-center gap-3">
             <div className="relative mr-2" ref={popoverRef}>
               <button 
@@ -104,9 +113,9 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
-            <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 mr-2" />
-            <span className="text-sm text-slate-500 dark:text-slate-400">Administrator,</span>
-            <span className="font-bold text-slate-900 dark:text-white">{user?.name}</span>
+            <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 mr-1 md:mr-2" />
+            <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">Administrator,</span>
+            <span className="hidden sm:inline font-bold text-slate-900 dark:text-white">{user?.name}</span>
             <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-200 dark:border-blue-800">
               {user?.name?.charAt(0)?.toUpperCase()}
             </div>

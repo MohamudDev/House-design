@@ -28,6 +28,35 @@ import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
 import InstallPWA from './components/InstallPWA';
+import { useEffect } from 'react';
+
+const ClearCacheComponent = () => {
+  useEffect(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      }).then(() => {
+        window.location.href = '/login';
+      });
+    } else {
+      window.location.href = '/login';
+    }
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="text-center p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl max-w-md w-full">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-6"></div>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Clearing App Cache...</h1>
+        <p className="text-slate-500 dark:text-slate-400">Please wait while we update your app to the latest version.</p>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   return (
@@ -71,7 +100,7 @@ function App() {
             <Route index element={<EngineerOverview />} />
             <Route path="upload" element={<UploadDesign />} />
             <Route path="designs" element={<MyDesigns />} />
-            <Route path="messages" element={<div className="p-6"><MessagesView /></div>} />
+            <Route path="messages" element={<div className="h-full p-2 md:p-6"><MessagesView /></div>} />
             <Route path="availability" element={<Availability />} />
           </Route>
 
@@ -97,7 +126,7 @@ function App() {
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
                   <ClientNavbar />
-                  <div className="flex-1 max-w-7xl mx-auto w-full p-6">
+                  <div className="flex-1 max-w-7xl mx-auto w-full p-2 md:p-6 h-[calc(100vh-80px)]">
                     <MessagesView />
                   </div>
                 </div>
@@ -130,6 +159,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/clear-cache" element={<ClearCacheComponent />} />
         </Routes>
         </Router>
       </SocketProvider>

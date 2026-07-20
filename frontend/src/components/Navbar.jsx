@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Home, LogOut, User as UserIcon, Moon, Sun, Mail, CheckCircle2 } from 'lucide-react';
+import { Home, LogOut, User as UserIcon, Moon, Sun, Mail, CheckCircle2, Menu, X } from 'lucide-react';
 import { useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -10,6 +10,7 @@ const Navbar = () => {
   const [unreadReplies, setUnreadReplies] = useState([]);
   const [showPopover, setShowPopover] = useState(false);
   const [hasOpenedPopover, setHasOpenedPopover] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const popoverRef = useRef(null);
 
   useEffect(() => {
@@ -162,7 +163,7 @@ const Navbar = () => {
         )}
 
         {user ? (
-          <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg text-white">
               <UserIcon size={18} />
               <span className="text-sm font-bold">{user.name.split(' ')[0]}</span>
@@ -176,7 +177,7 @@ const Navbar = () => {
             </button>
           </div>
         ) : (
-          <>
+          <div className="hidden md:flex items-center gap-4">
             <Link 
               to="/login" 
               className="text-white font-medium hover:text-white/80 transition-colors"
@@ -189,9 +190,55 @@ const Navbar = () => {
             >
               Sign Up
             </Link>
-          </>
+          </div>
         )}
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="md:hidden p-2 text-white/70 hover:text-white transition-colors"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {isMobileMenuOpen && (
+        <div className="absolute top-full left-0 w-full bg-slate-900/95 backdrop-blur-xl border-b border-white/10 flex flex-col items-center py-6 gap-6 md:hidden z-50">
+          <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Home</Link>
+          {user?.role === 'client' && (
+            <>
+              <Link to="/client-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Marketplace</Link>
+              <Link to="/client-dashboard/my-designs" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">My Design</Link>
+            </>
+          )}
+          <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">About Us</Link>
+          <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Services</Link>
+          <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Contact</Link>
+          
+          <div className="w-2/3 h-px bg-white/10 my-2"></div>
+          
+          {user ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-2 text-white">
+                <UserIcon size={20} />
+                <span className="font-bold">{user.name}</span>
+              </div>
+              <button 
+                onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                className="text-red-400 font-bold flex items-center gap-2"
+              >
+                <LogOut size={20} /> Logout
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 w-full px-10">
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold py-3 w-full text-center border border-white/20 rounded-xl">Log In</Link>
+              <Link to="/register" onClick={() => setIsMobileMenuOpen(false)} className="bg-indigo-600 text-white font-bold py-3 w-full text-center rounded-xl">Sign Up</Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 };

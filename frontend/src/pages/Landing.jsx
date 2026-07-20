@@ -34,6 +34,13 @@ const Landing = () => {
   };
 
   useEffect(() => {
+    if (user) {
+      if (user.role === 'engineer') navigate('/engineer-dashboard');
+      else if (user.role === 'admin') navigate('/admin-dashboard');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     const fetchPublicDesigns = async () => {
       try {
         const { data } = await axios.get(`/api/public/designs?t=${new Date().getTime()}`);

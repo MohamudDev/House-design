@@ -170,7 +170,8 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
                 type="number" 
                 name="budgetEstimate" 
                 required 
-                min="1" 
+                min="0" 
+                step="0.1"
                 value={formData.budgetEstimate} 
                 onChange={handleInputChange} 
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 

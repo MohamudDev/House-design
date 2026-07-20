@@ -59,7 +59,7 @@ const MessagesView = () => {
 
   const fetchInbox = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages/inbox`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/inbox`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
@@ -76,7 +76,7 @@ const MessagesView = () => {
   const loadConversation = async (partner) => {
     setActivePartner(partner);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages/${partner._id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${partner._id}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
@@ -128,7 +128,7 @@ const MessagesView = () => {
       if (newMessage.trim()) formData.append('content', newMessage);
       if (selectedFile) formData.append('attachment', selectedFile);
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -154,7 +154,7 @@ const MessagesView = () => {
     if (feedbackSatisfied === null) return;
     setIsSubmittingFeedback(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/client/engineers/${activePartner._id}/rate`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/engineers/${activePartner._id}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,10 +192,10 @@ const MessagesView = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-120px)] bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex overflow-hidden">
+    <div className="h-full bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex overflow-hidden relative">
       
       {/* Sidebar - Inbox List */}
-      <div className="w-1/3 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-slate-800/50">
+      <div className={`${activePartner ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-slate-200 dark:border-slate-800 flex-col bg-slate-50 dark:bg-slate-800/50`}>
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Messages</h2>
           <div className="relative">
@@ -253,13 +253,19 @@ const MessagesView = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
+      <div className={`${!activePartner ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white dark:bg-slate-900 w-full`}>
         {activePartner ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+            <div className="p-3 md:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+              <div className="flex items-center gap-2 md:gap-3">
+                <button 
+                  onClick={() => setActivePartner(null)}
+                  className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shrink-0">
                   {activePartner?.name?.charAt(0)?.toUpperCase()}
                 </div>
                 <div>

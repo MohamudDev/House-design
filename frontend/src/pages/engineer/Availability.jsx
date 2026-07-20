@@ -28,21 +28,15 @@ const Availability = () => {
           headers: { Authorization: `Bearer ${userInfo.token}` }
         };
 
-        const baseUrl = window.location.origin;
-        console.log('Using Base URL:', baseUrl);
-
         // Test connectivity
         try {
-          console.log('Testing Connectivity to:', `${baseUrl}/api/ping`);
-          const pingRes = await axios.get(`${baseUrl}/api/ping`);
+          const pingRes = await axios.get('/api/ping');
           console.log('Connectivity success:', pingRes.data.message);
         } catch (pingErr) {
           console.error('Connectivity check failed:', pingErr.message);
         }
         
-        console.log('Fetching Profile from:', `${baseUrl}/api/auth/profile`);
-        const { data } = await axios.get(`${baseUrl}/api/auth/profile`, config);
-        console.log('Profile loaded:', data.data.email);
+        const { data } = await axios.get('/api/auth/profile', config);
         
         setProfile({
           bio: data.data.bio || '',
@@ -57,7 +51,7 @@ const Availability = () => {
         
         setMessage({ 
           type: 'error', 
-          text: `Error ${status || ''}: ${errMsg}. Please ensure the backend is running on port 5005.` 
+          text: `Error ${status || ''}: ${errMsg}.` 
         });
       } finally {
         setLoading(false);
@@ -97,10 +91,7 @@ const Availability = () => {
         workingHours: profile.workingHours
       };
 
-      const baseUrl = '';
-      console.log('DIRECT SAVE to:', `${baseUrl}/api/auth/profile`, updateData);
-      
-      const response = await axios.put(`${baseUrl}/api/auth/profile`, updateData, config);
+      const response = await axios.put('/api/auth/profile', updateData, config);
       console.log('SAVE SUCCESS:', response.data);
       
       setMessage({ type: 'success', text: 'Profile and availability updated successfully!' });

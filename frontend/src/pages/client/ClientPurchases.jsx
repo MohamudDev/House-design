@@ -15,7 +15,7 @@ const ClientPurchases = () => {
 
   const fetchPurchases = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/client/purchases`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/purchases`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         }

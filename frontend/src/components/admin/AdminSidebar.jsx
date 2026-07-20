@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign, X } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
-const AdminSidebar = () => {
+const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
   const { logout } = useContext(AuthContext);
 
   const navLinks = [
@@ -17,13 +17,30 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 min-h-screen flex flex-col">
-      <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <ShieldAlert size={18} className="text-white" />
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity" 
+          onClick={() => setIsSidebarOpen(false)} 
+        />
+      )}
+      
+      <aside className={`w-64 bg-slate-900 text-slate-300 min-h-screen flex flex-col fixed md:relative z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="p-6 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <ShieldAlert size={18} className="text-white" />
+            </div>
+            <span className="font-bold text-xl text-white tracking-wide">Admin</span>
+          </div>
+          <button 
+            className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X size={20} />
+          </button>
         </div>
-        <span className="font-bold text-xl text-white tracking-wide">Admin</span>
-      </div>
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navLinks.map((link) => (
@@ -31,6 +48,7 @@ const AdminSidebar = () => {
             key={link.name}
             to={link.path}
             end={link.exact}
+            onClick={() => setIsSidebarOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${
                 isActive 
@@ -55,6 +73,7 @@ const AdminSidebar = () => {
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

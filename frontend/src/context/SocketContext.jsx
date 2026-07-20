@@ -13,7 +13,7 @@ export const SocketProvider = ({ children }) => {
   const fetchUnreadCount = async () => {
     if (!user || !user.token) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages/unread-count`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/unread-count`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
