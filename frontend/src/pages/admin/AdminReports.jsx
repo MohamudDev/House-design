@@ -4,7 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
-import { Filter, Calendar, Users, FolderOpen, TrendingUp, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Filter, Calendar, Users, FolderOpen, TrendingUp, Clock, UserCheck, Shield, DollarSign, CheckCircle, HelpCircle, AlertTriangle, Building } from 'lucide-react';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -77,6 +78,92 @@ const AdminReports = () => {
 
       {/* Main Content Area to Export */}
       <div id="report-content" className="space-y-8 bg-slate-50 dark:bg-slate-900 p-4 -m-4 rounded-xl transition-colors">
+        
+        {/* Full Statistics Summary Cards */}
+        {data?.fullStats && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-2">
+                <Users size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalClients}</h4>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2">
+                <UserCheck size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Engineers</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalEngineers}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-2">
+                <Shield size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Admins</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalAdmins}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2">
+                <FolderOpen size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Designs</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalDesigns}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2">
+                <CheckCircle size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Sold Designs</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalSoldDesigns}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 flex items-center justify-center mb-2">
+                <Building size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unsold Designs</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.totalUnsoldDesigns}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2">
+                <DollarSign size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Sales</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">${data.fullStats.totalSales.toLocaleString()}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mb-2">
+                <TrendingUp size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Admin Commission</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">${data.fullStats.totalCommission.toLocaleString()}</h4>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-2">
+                <AlertTriangle size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pending Complaints</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.pendingComplaints}</h4>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-2">
+                <HelpCircle size={20} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pending Withdrawals</p>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white">{data.fullStats.pendingWithdrawals}</h4>
+            </div>
+          </div>
+        )}
+
         {/* Main Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Growth Chart */}
@@ -195,7 +282,7 @@ const AdminReports = () => {
             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <Clock size={18} className="text-amber-500 dark:text-amber-400" /> Recent Users
             </h3>
-            <button className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider">View All</button>
+            <Link to="/admin-dashboard/users" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider">View All</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -243,7 +330,7 @@ const AdminReports = () => {
             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <Calendar size={18} className="text-indigo-500 dark:text-indigo-400" /> Recent Uploads
             </h3>
-            <button className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider">View All</button>
+            <Link to="/admin-dashboard/designs" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider">View All</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">

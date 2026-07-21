@@ -2,12 +2,12 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import { useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Mail, Menu } from 'lucide-react';
+import { Mail, Menu, LogOut } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 const AdminDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const [unreadContacts, setUnreadContacts] = useState([]);
   const [showPopover, setShowPopover] = useState(false);
   const [hasOpenedPopover, setHasOpenedPopover] = useState(false);
@@ -119,6 +119,13 @@ const AdminDashboard = () => {
             <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-200 dark:border-blue-800">
               {user?.name?.charAt(0)?.toUpperCase()}
             </div>
+            <button 
+              onClick={logout}
+              className="ml-2 p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-full transition-colors flex items-center justify-center"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
         </header>
 

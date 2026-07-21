@@ -1,18 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UploadCloud, Clock, CheckCircle, MessageSquare, XCircle, DollarSign, Wallet } from 'lucide-react';
+import { UploadCloud, CheckCircle, MessageSquare, DollarSign, Wallet, Building, Activity, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const EngineerOverview = () => {
-  const [stats, setStats] = useState({
-    totalDesigns: 0,
-    pendingDesigns: 0,
-    approvedDesigns: 0,
-    rejectedDesigns: 0,
-    messagesReceived: 0,
-    totalEarnings: 0,
-    walletBalance: 0
-  });
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -25,6 +19,7 @@ const EngineerOverview = () => {
         setStats(data.data);
       } catch (error) {
         console.error('Error fetching stats:', error);
+        setError(error.response?.data?.message || 'Failed to load dashboard data');
       } finally {
         setLoading(false);
       }
@@ -46,24 +41,41 @@ const EngineerOverview = () => {
     }
   };
 
-  if (loading) return <div className="text-slate-500 dark:text-slate-400 animate-pulse">Loading dashboard data...</div>;
+  if (error) return (
+    <div className="flex h-64 items-center justify-center">
+      <div className="text-red-500 dark:text-red-400 text-lg flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+        <AlertCircle /> {error}
+      </div>
+    </div>
+  );
 
-  const statCards = [
-    { title: 'Total Uploaded', value: stats.totalDesigns, icon: <UploadCloud size={24} />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30', border: 'border-indigo-100 dark:border-indigo-800' },
-    { title: 'Pending Approval', value: stats.pendingDesigns, icon: <Clock size={24} />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-100 dark:border-amber-800' },
-    { title: 'Approved Designs', value: stats.approvedDesigns, icon: <CheckCircle size={24} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', border: 'border-emerald-100 dark:border-emerald-800' },
-    { title: 'Rejected Designs', value: stats.rejectedDesigns, icon: <XCircle size={24} />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30', border: 'border-red-100 dark:border-red-800' },
-    { title: 'Total Earnings', value: `$${(stats.totalEarnings || 0).toLocaleString()}`, icon: <DollarSign size={24} />, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/30', border: 'border-green-100 dark:border-green-800' },
-    { title: 'Wallet Balance', value: `$${(stats.walletBalance || 0).toLocaleString()}`, icon: <Wallet size={24} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', border: 'border-emerald-100 dark:border-emerald-800' }
+  if (loading || !stats) return (
+    <div className="flex h-64 items-center justify-center">
+      <div className="text-slate-500 dark:text-slate-400 animate-pulse text-lg flex items-center gap-2">
+        <Activity className="animate-spin" /> Loading dashboard...
+      </div>
+    </div>
+  );
+
+  const overviewCards = [
+    { title: 'Total Uploaded', value: stats.totalDesigns || 0, icon: <UploadCloud size={24} />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
+    { title: 'Active Properties', value: stats.activeProperties || 0, icon: <CheckCircle size={24} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { title: 'Pending Approval', value: stats.pendingDesigns || 0, icon: <Clock size={24} />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { title: 'Messages Received', value: stats.messagesReceived || 0, icon: <MessageSquare size={24} />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' }
   ];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Dashboard Overview</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {statCards.map((card, idx) => (
-          <div key={idx} className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border ${card.border} flex items-center gap-4 transition-transform hover:-translate-y-1`}>
+    <div className="space-y-6">
+      <div className="flex justify-between items-end mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard Overview</h1>
+          <p className="text-slate-500 dark:text-slate-400">Welcome to your workspace</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {overviewCards.map((card, idx) => (
+          <div key={idx} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 transition-transform hover:-translate-y-1">
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${card.bg} ${card.color}`}>
               {card.icon}
             </div>
@@ -75,25 +87,48 @@ const EngineerOverview = () => {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 transition-colors mb-6">
-        <UploadCloud size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Ready to showcase your work?</h3>
-        <p className="max-w-md mx-auto mb-6">Upload your latest 3D models and floor plans to get them approved and featured in our global gallery.</p>
-      </div>
+      {stats.rejectedDesigns > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4 flex items-center gap-4 text-red-800 dark:text-red-300">
+          <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
+          <div>
+            <p className="font-semibold">Action Required</p>
+            <p className="text-sm">You have {stats.rejectedDesigns} design(s) that were rejected by the admin. Please review them.</p>
+          </div>
+        </div>
+      )}
 
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white flex flex-col md:flex-row items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold mb-2">Available Wallet Balance: ${stats.walletBalance.toLocaleString()}</h3>
-          <p className="text-indigo-100">Withdraw your earnings directly to your mobile money account.</p>
+      {/* Wallet Section */}
+      <div className="bg-gradient-to-r from-slate-900 to-indigo-900 dark:from-black dark:to-slate-900 rounded-2xl shadow-lg p-8 text-white flex flex-col md:flex-row items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+            <Wallet size={32} className="text-indigo-300" />
+          </div>
+          <div>
+            <p className="text-indigo-200 font-medium mb-1">Available Wallet Balance</p>
+            <h3 className="text-3xl md:text-4xl font-bold">${(stats.walletBalance || 0).toLocaleString()}</h3>
+            <p className="text-sm text-indigo-200 mt-2 flex items-center gap-2">
+              <TrendingUp size={14} /> Total Lifetime Earnings: ${(stats.totalEarnings || 0).toLocaleString()}
+            </p>
+          </div>
         </div>
         <button 
           onClick={handleWithdraw}
           disabled={stats.walletBalance <= 0}
-          className="mt-6 md:mt-0 px-8 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-6 md:mt-0 px-8 py-4 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transform active:scale-[0.98]"
         >
-          Withdraw All Funds
+          Withdraw Funds
         </button>
       </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400 transition-colors">
+        <UploadCloud size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Ready to showcase your work?</h3>
+        <p className="max-w-md mx-auto mb-6">Upload your latest 3D models and floor plans to get them approved and featured in our global gallery.</p>
+        <Link to="/engineer-dashboard/upload" className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+          Upload New Design
+        </Link>
+      </div>
+
     </div>
   );
 };

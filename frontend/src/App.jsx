@@ -9,6 +9,7 @@ import Contact from './pages/Contact';
 import Services from './pages/Services';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOverview from './pages/admin/AdminOverview';
+import ManageAdmins from './pages/admin/ManageAdmins';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageDesigns from './pages/admin/ManageDesigns';
 import AdminReports from './pages/admin/AdminReports';
@@ -18,6 +19,7 @@ import ManageWithdrawals from './pages/admin/ManageWithdrawals';
 import ClientDashboard from './pages/ClientDashboard';
 import EngineerDashboard from './pages/EngineerDashboard';
 import EngineerOverview from './pages/engineer/EngineerOverview';
+import EngineerReports from './pages/engineer/EngineerReports';
 import UploadDesign from './pages/engineer/UploadDesign';
 import MyDesigns from './pages/engineer/MyDesigns';
 import Availability from './pages/engineer/Availability';
@@ -28,6 +30,8 @@ import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
 import InstallPWA from './components/InstallPWA';
+import ComplaintManager from './components/shared/ComplaintManager';
+import ManageComplaints from './pages/admin/ManageComplaints';
 import { useEffect } from 'react';
 
 const ClearCacheComponent = () => {
@@ -75,17 +79,19 @@ function App() {
           <Route 
             path="/admin-dashboard" 
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
                 <AdminDashboard />
               </ProtectedRoute>
             } 
           >
             <Route index element={<AdminOverview />} />
+            <Route path="admins" element={<ManageAdmins />} />
             <Route path="users" element={<ManageUsers />} />
             <Route path="designs" element={<ManageDesigns />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="withdrawals" element={<ManageWithdrawals />} />
             <Route path="contacts" element={<ManageContacts />} />
+            <Route path="complaints" element={<ManageComplaints />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
@@ -98,9 +104,11 @@ function App() {
             } 
           >
             <Route index element={<EngineerOverview />} />
+            <Route path="reports" element={<EngineerReports />} />
             <Route path="upload" element={<UploadDesign />} />
             <Route path="designs" element={<MyDesigns />} />
             <Route path="messages" element={<div className="h-full p-2 md:p-6"><MessagesView /></div>} />
+            <Route path="complaints" element={<div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6"><ComplaintManager /></div>} />
             <Route path="availability" element={<Availability />} />
           </Route>
 
@@ -154,6 +162,19 @@ function App() {
                   <ClientNavbar />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-6">
                     <ClientPurchases />
+                  </div>
+                </div>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client-dashboard/complaints"  
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
+                  <ClientNavbar />
+                  <div className="flex-1 max-w-7xl mx-auto w-full p-6">
+                    <ComplaintManager />
                   </div>
                 </div>
               </ProtectedRoute>

@@ -17,7 +17,8 @@ const upload = require('../middleware/uploadMiddleware');
 const cpUpload = upload.fields([
   { name: 'images', maxCount: 5 },
   { name: 'plan2D', maxCount: 1 },
-  { name: 'model3D', maxCount: 1 }
+  { name: 'model3D', maxCount: 1 },
+  { name: 'interiorImages', maxCount: 20 }
 ]);
 
 // Apply protection and specific role authorization to all routes in this file

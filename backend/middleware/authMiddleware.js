@@ -19,6 +19,10 @@ const protect = async function(req, res, next) {
         return res.status(401).json({ message: 'User not found' });
       }
       
+      if (req.user.isSuspended) {
+        return res.status(403).json({ message: 'Your account has been suspended by the administrator.' });
+      }
+      
       console.log('DEBUG: User authenticated:', req.user.email, 'Role:', req.user.role);
       return next();
     } catch (error) {

@@ -23,8 +23,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['client', 'engineer', 'admin'],
+    enum: ['client', 'engineer', 'admin', 'superadmin'],
     default: 'client'
+  },
+  isSuspended: {
+    type: Boolean,
+    default: false
   },
   isApproved: {
     type: Boolean,
@@ -34,6 +38,13 @@ const userSchema = new mongoose.Schema({
     }
   },
   // Engineer specific fields
+  nationalIdUrl: { type: String, default: '' },
+  certificateUrl: { type: String, default: '' },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
   bio: { type: String, default: '' },
   specialization: { type: String, default: '' },
   isAvailable: { type: Boolean, default: true },

@@ -4,7 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import axios from 'axios'
 
-const backendUrl = import.meta.env.VITE_API_URL || 'https://housedesignbackend-production.up.railway.app';
+const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5004';
 axios.defaults.baseURL = backendUrl;
 
 // Global interceptor to fix relative upload paths from backend

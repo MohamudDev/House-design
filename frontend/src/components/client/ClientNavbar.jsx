@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { SocketContext } from '../../context/SocketContext';
-import { Home, MessageSquare, LogOut, Layout, Box, ShoppingCart } from 'lucide-react';
+import { Home, MessageSquare, LogOut, Layout, Box, ShoppingCart, AlertCircle } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
 const ClientNavbar = () => {
@@ -32,6 +32,9 @@ const ClientNavbar = () => {
         </Link>
         <Link to="/client-dashboard/purchases" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="My Purchases">
           <ShoppingCart size={20} />
+        </Link>
+        <Link to="/client-dashboard/complaints" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Submit Complaint">
+          <AlertCircle size={20} />
         </Link>
         <Link to="/client-dashboard/messages" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl relative" title="Messages">
           <MessageSquare size={20} />

@@ -12,6 +12,8 @@ const Register = () => {
     confirmPassword: '',
     role: 'client'
   });
+  const [nationalIdFile, setNationalIdFile] = useState(null);
+  const [certificateFile, setCertificateFile] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -45,11 +47,30 @@ const Register = () => {
 
   const submitRegistration = async (acceptedTerms) => {
     setIsLoading(true);
-    const result = await register(formData.name, formData.email, formData.password, formData.role, acceptedTerms);
+    
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('email', formData.email);
+    data.append('password', formData.password);
+    data.append('role', formData.role);
+    if (acceptedTerms) {
+      data.append('acceptedTerms', 'true');
+    }
+    if (formData.role === 'engineer') {
+      if (!nationalIdFile || !certificateFile) {
+        setError('Please upload both National ID and Engineering Certificate');
+        setIsLoading(false);
+        return;
+      }
+      data.append('nationalId', nationalIdFile);
+      data.append('certificate', certificateFile);
+    }
+
+    const result = await register(data);
     
     if (result.success) {
       const userRole = result.user.role;
-      if (userRole === 'admin') navigate('/admin-dashboard');
+      if (userRole === 'admin' || userRole === 'superadmin') navigate('/admin-dashboard');
       else if (userRole === 'engineer') navigate('/engineer-dashboard');
       else navigate('/');
     } else {
@@ -181,6 +202,35 @@ const Register = () => {
                 </select>
               </div>
             </div>
+
+            {formData.role === 'engineer' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">National ID</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      required
+                      onChange={(e) => setNationalIdFile(e.target.files[0])}
+                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 dark:text-white transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Engineering / Professional Certificate</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      required
+                      onChange={(e) => setCertificateFile(e.target.files[0])}
+                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 dark:text-white transition-colors"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <button
               type="submit"

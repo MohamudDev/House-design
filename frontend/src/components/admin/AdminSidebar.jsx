@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign, X } from 'lucide-react';
+import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign, X, AlertCircle } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
 const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
-  const { logout } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin-dashboard', icon: <LayoutDashboard size={20} />, exact: true },
@@ -13,8 +13,13 @@ const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
     { name: 'Payouts', path: '/admin-dashboard/withdrawals', icon: <DollarSign size={20} /> },
     { name: 'Reports', path: '/admin-dashboard/reports', icon: <FileBarChart size={20} /> },
     { name: 'Inbox', path: '/admin-dashboard/contacts', icon: <MessageSquare size={20} /> },
+    { name: 'Complaints', path: '/admin-dashboard/complaints', icon: <AlertCircle size={20} /> },
     { name: 'Settings', path: '/admin-dashboard/settings', icon: <Settings size={20} /> },
   ];
+
+  if (user?.role === 'superadmin') {
+    navLinks.splice(1, 0, { name: 'Manage Admins', path: '/admin-dashboard/admins', icon: <ShieldAlert size={20} /> });
+  }
 
   return (
     <>

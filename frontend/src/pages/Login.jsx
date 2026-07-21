@@ -21,7 +21,7 @@ const Login = () => {
     
     if (result.success) {
       const userRole = result.user.role;
-      if (userRole === 'admin') navigate('/admin-dashboard');
+      if (userRole === 'admin' || userRole === 'superadmin') navigate('/admin-dashboard');
       else if (userRole === 'engineer') navigate('/engineer-dashboard');
       else navigate('/');
     } else {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Eye, Check, X, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, Check, X, ShieldAlert } from 'lucide-react';
 import DesignViewModal from '../../components/DesignViewModal';
 
 const ManageDesigns = () => {
@@ -44,7 +44,23 @@ const ManageDesigns = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const handleHideToggle = async (id, isHidden) => {
+    if (!window.confirm(`Are you sure you want to ${isHidden ? 'restore' : 'hide'} this design?`)) return;
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+      await axios.put(`/api/admin/designs/${id}/hide`, {}, config);
+      fetchDesigns();
+    } catch (error) {
+      console.error('Error hiding design:', error);
+      alert('Failed to update design visibility');
+    }
+  };
+
+  const getStatusBadge = (status, isHidden) => {
+    if (isHidden) {
+      return <span className="px-3 py-1 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 text-xs font-bold rounded-full flex items-center w-max gap-1 uppercase"><EyeOff size={14} /> Hidden</span>;
+    }
     switch (status) {
       case 'approved':
         return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full flex items-center w-max gap-1 uppercase"><Check size={14} /> Approved</span>;
@@ -82,7 +98,7 @@ const ManageDesigns = () => {
                   <td className="p-4 pl-6">
                     <div className="flex items-center gap-3">
                       {design.images && design.images.length > 0 ? (
-                        <img src={`${design.images[0]}`} alt="thumbnail" className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
+                        <img src={`${design.images[0]}`} alt="thumbnail" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">No Img</div>
                       )}
@@ -100,7 +116,7 @@ const ManageDesigns = () => {
                   </td>
                   <td className="p-4 text-slate-600 dark:text-slate-300">{design.houseType}</td>
                   <td className="p-4">
-                    {getStatusBadge(design.status)}
+                    {getStatusBadge(design.status, design.isHidden)}
                   </td>
                   <td className="p-4 pr-6">
                     <div className="flex items-center justify-end gap-2">
@@ -110,6 +126,18 @@ const ManageDesigns = () => {
                         title="View Details"
                       >
                         <Eye size={18} />
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleHideToggle(design._id, design.isHidden)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          design.isHidden 
+                            ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30' 
+                            : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30'
+                        }`}
+                        title={design.isHidden ? 'Restore Property' : 'Hide Property'}
+                      >
+                        {design.isHidden ? <Eye size={18} /> : <EyeOff size={18} />}
                       </button>
                       
                       {design.status !== 'approved' && (

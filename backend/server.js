@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -63,9 +64,10 @@ app.use((req, res, next) => {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Static folder for uploaded files
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Master Ping for debugging
 app.get('/api/ping', (req, res) => res.json({ success: true, message: 'Backend Server is Reachable' }));
@@ -83,6 +85,7 @@ app.use('/api/client', require('./routes/clientRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/contact', require('./routes/contactRoutes'));
+app.use('/api/complaints', require('./routes/complaintRoutes'));
 
 app.get('/', (req, res) => {
   res.send('API is running...');
@@ -99,3 +102,4 @@ const PORT = process.env.PORT || 5002;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// trigger nodemon restart

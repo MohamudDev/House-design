@@ -130,6 +130,7 @@ const MyFavorites = () => {
                     <img 
                       src={`${design.images[0]}`} 
                       alt={design.title}
+                      onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (

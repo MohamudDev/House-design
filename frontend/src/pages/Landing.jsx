@@ -27,7 +27,7 @@ const Landing = () => {
     if (user) {
       if (user.role === 'client') navigate('/client-dashboard');
       else if (user.role === 'engineer') navigate('/engineer-dashboard');
-      else if (user.role === 'admin') navigate('/admin-dashboard');
+      else if (user.role === 'admin' || user.role === 'superadmin') navigate('/admin-dashboard');
     } else {
       navigate('/login');
     }
@@ -36,7 +36,7 @@ const Landing = () => {
   useEffect(() => {
     if (user) {
       if (user.role === 'engineer') navigate('/engineer-dashboard');
-      else if (user.role === 'admin') navigate('/admin-dashboard');
+      else if (user.role === 'admin' || user.role === 'superadmin') navigate('/admin-dashboard');
     }
   }, [user, navigate]);
 
@@ -178,6 +178,7 @@ const Landing = () => {
                         <img 
                           src={`${design.images[0]}`} 
                           alt={design.title}
+                          onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                       ) : (

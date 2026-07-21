@@ -92,7 +92,7 @@ const MyDesigns = () => {
                     <td className="p-4 pl-6">
                       <div className="flex items-center gap-3">
                         {design.images && design.images.length > 0 ? (
-                          <img src={`${design.images[0]}`} alt="thumbnail" className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
+                          <img src={`${design.images[0]}`} alt="thumbnail" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
                         ) : (
                           <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">No Img</div>
                         )}

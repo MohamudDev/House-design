@@ -1,18 +1,63 @@
 const Design = require('../models/Design');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const Message = require('../models/Message');
 
 // @desc    Upload new design
 // @route   POST /api/engineer/designs
 // @access  Private/Engineer
 exports.uploadDesign = async (req, res) => {
   try {
-    const { title, houseType, rooms, bathrooms, kitchens, carParking, budgetEstimate, price, description } = req.body;
+    const { title, houseType, rooms, bathrooms, kitchens, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
     // Process files
     const images = req.files['images'] ? req.files['images'].map(file => `/uploads/${file.filename}`) : [];
     const plan2D = req.files['plan2D'] ? `/uploads/${req.files['plan2D'][0].filename}` : null;
     const model3D = req.files['model3D'] ? `/uploads/${req.files['model3D'][0].filename}` : null;
+
+    let parsedUnits = [];
+    if (units) {
+      try {
+        parsedUnits = JSON.parse(units);
+      } catch (e) {
+        parsedUnits = [];
+      }
+    }
+
+    let parsedVehicleType = [];
+    if (vehicleType) {
+      try {
+        parsedVehicleType = JSON.parse(vehicleType);
+      } catch (e) {
+        parsedVehicleType = [];
+      }
+    }
+
+    let interiorGallery = [];
+    if (req.body.interiorGalleryData) {
+      try {
+        const galleryData = JSON.parse(req.body.interiorGalleryData);
+        const interiorFiles = req.files['interiorImages'] || [];
+        
+        let fileIndex = 0;
+        interiorGallery = galleryData.map(item => {
+          // If item indicates it has a new file, we grab the next file from interiorFiles
+          let imagePath = item.image; // fallback to whatever was sent
+          if (item.hasNewFile && interiorFiles[fileIndex]) {
+            imagePath = `/uploads/${interiorFiles[fileIndex].filename}`;
+            fileIndex++;
+          }
+          return {
+            roomName: item.roomName,
+            description: item.description,
+            order: item.order,
+            image: imagePath
+          };
+        }).filter(item => item.image); // Only keep items with an image
+      } catch (e) {
+        console.error('Error parsing interiorGalleryData:', e);
+      }
+    }
 
     const design = await Design.create({
       title,
@@ -21,14 +66,26 @@ exports.uploadDesign = async (req, res) => {
       bathrooms: bathrooms || 1,
       kitchens: kitchens || 1,
       carParking: carParking === 'true' || carParking === true,
+      parkingType,
+      vehicleType: parsedVehicleType,
+      totalParkingSpaces: totalParkingSpaces ? Number(totalParkingSpaces) : undefined,
+      parkingLocation,
+      reservedParking: reservedParking === 'true' || reservedParking === true,
+      visitorParking: visitorParking === 'true' || visitorParking === true,
+      parkingDescription,
       budgetEstimate,
       price: price || budgetEstimate,
       description,
+      location,
+      numberOfFloors,
+      totalUnits,
+      units: parsedUnits,
       images,
       plan2D,
       model3D,
+      interiorGallery,
       engineer: req.user.id,
-      status: 'pending' // Default status
+      status: req.user.isApproved ? 'approved' : 'pending'
     });
 
     res.status(201).json({
@@ -64,14 +121,60 @@ exports.getEngineerStats = async (req, res) => {
     const approvedDesigns = designs.filter(d => d.status === 'approved').length;
     const rejectedDesigns = designs.filter(d => d.status === 'rejected').length;
     
+    // Property Reports
+    const activeProperties = approvedDesigns;
+    
     const transactions = await Transaction.aggregate([
+      { $match: { engineer: req.user._id, paymentStatus: 'completed' } },
+      { $group: { _id: "$design" } }
+    ]);
+    const soldDesignIds = transactions.map(t => t._id.toString());
+    
+    const totalPropertiesSold = soldDesignIds.length;
+    const totalUnsoldProperties = totalDesigns - totalPropertiesSold;
+
+    const allTransactions = await Transaction.aggregate([
       { $match: { engineer: req.user._id, paymentStatus: 'completed' } },
       { $group: { _id: null, totalEarnings: { $sum: "$engineerAmount" } } }
     ]);
-    const totalEarnings = transactions.length > 0 ? transactions[0].totalEarnings : 0;
+    const totalEarnings = allTransactions.length > 0 ? allTransactions[0].totalEarnings : 0;
 
-    // Messages are not fully implemented yet, returning placeholder 0
-    const messagesReceived = 0;
+    // Customer Communication Reports
+    const messages = await Message.find({ receiver: req.user._id });
+    const messagesReceived = messages.length;
+    const totalPendingReplies = messages.filter(m => !m.isRead).length;
+    const totalMessagesReplied = messagesReceived - totalPendingReplies;
+
+    // Property Performance
+    const designIds = designs.map(d => d._id);
+    const messagesPerDesign = await Message.aggregate([
+      { $match: { designId: { $in: designIds } } },
+      { $group: { _id: "$designId", count: { $sum: 1 } } }
+    ]);
+    const messagesMap = {};
+    messagesPerDesign.forEach(m => messagesMap[m._id] = m.count);
+
+    const propertyPerformance = designs.map(d => ({
+      _id: d._id,
+      title: d.title,
+      views: d.views || 0,
+      favorites: d.favoritesCount || 0,
+      messages: messagesMap[d._id] || 0,
+      status: soldDesignIds.includes(d._id.toString()) ? 'Sold' : 'Unsold'
+    }));
+
+    // Recent Activities
+    const recentUploads = [...designs].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map(d => ({ type: 'upload', title: d.title, date: d.createdAt }));
+    const recentMessages = [...messages].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map(m => ({ type: 'message', content: m.content, date: m.createdAt }));
+    
+    const recentSalesTransactions = await Transaction.find({ engineer: req.user._id, paymentStatus: 'completed' })
+      .sort('-createdAt').limit(5).populate('design', 'title');
+    const recentSales = recentSalesTransactions.map(t => ({ type: 'sale', title: t.design?.title, amount: t.engineerAmount, date: t.createdAt }));
+
+    const recentActivities = [...recentUploads, ...recentMessages, ...recentSales]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+
     const user = await User.findById(req.user._id);
     const walletBalance = user.walletBalance || 0;
 
@@ -82,9 +185,16 @@ exports.getEngineerStats = async (req, res) => {
         pendingDesigns,
         approvedDesigns,
         rejectedDesigns,
+        activeProperties,
+        totalPropertiesSold,
+        totalUnsoldProperties,
         messagesReceived,
+        totalMessagesReplied,
+        totalPendingReplies,
         totalEarnings,
-        walletBalance
+        walletBalance,
+        propertyPerformance,
+        recentActivities
       }
     });
   } catch (error) {
@@ -143,7 +253,7 @@ exports.updateProfile = async (req, res) => {
 // @access  Private/Engineer
 exports.updateDesign = async (req, res) => {
   try {
-    const { title, houseType, rooms, budgetEstimate, price, description } = req.body;
+    const { title, houseType, rooms, bathrooms, kitchens, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
     
     let design = await Design.findById(req.params.id);
     
@@ -155,15 +265,71 @@ exports.updateDesign = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized to update this design' });
     }
 
+    let parsedUnits = design.units;
+    if (units) {
+      try {
+        parsedUnits = JSON.parse(units);
+      } catch (e) {
+        // keep existing units if parse fails or skip
+      }
+    }
+
+    let parsedVehicleType = design.vehicleType;
+    if (vehicleType) {
+      try {
+        parsedVehicleType = JSON.parse(vehicleType);
+      } catch (e) {
+        // keep existing
+      }
+    }
+
     const updateData = {
       title,
       houseType,
       rooms,
+      bathrooms,
+      kitchens,
+      carParking: carParking === 'true' || carParking === true,
+      parkingType,
+      vehicleType: parsedVehicleType,
+      totalParkingSpaces: totalParkingSpaces ? Number(totalParkingSpaces) : undefined,
+      parkingLocation,
+      reservedParking: reservedParking === 'true' || reservedParking === true,
+      visitorParking: visitorParking === 'true' || visitorParking === true,
+      parkingDescription,
       budgetEstimate,
       price: price || budgetEstimate,
       description,
-      status: 'pending' // Reset status to pending for admin re-approval
+      location,
+      numberOfFloors,
+      totalUnits,
+      units: parsedUnits,
+      status: req.user.isApproved ? 'approved' : 'pending'
     };
+
+    if (req.body.interiorGalleryData) {
+      try {
+        const galleryData = JSON.parse(req.body.interiorGalleryData);
+        const interiorFiles = (req.files && req.files['interiorImages']) ? req.files['interiorImages'] : [];
+        
+        let fileIndex = 0;
+        updateData.interiorGallery = galleryData.map(item => {
+          let imagePath = item.image; 
+          if (item.hasNewFile && interiorFiles[fileIndex]) {
+            imagePath = `/uploads/${interiorFiles[fileIndex].filename}`;
+            fileIndex++;
+          }
+          return {
+            roomName: item.roomName,
+            description: item.description,
+            order: item.order,
+            image: imagePath
+          };
+        }).filter(item => item.image);
+      } catch (e) {
+        console.error('Error parsing interiorGalleryData:', e);
+      }
+    }
 
     if (req.files && req.files['images']) {
       updateData.images = req.files['images'].map(file => `/uploads/${file.filename}`);

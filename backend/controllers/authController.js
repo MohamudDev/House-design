@@ -13,10 +13,32 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, acceptedTerms } = req.body;
+    console.log('--- NEW REGISTRATION REQUEST ---');
+    console.log('Headers:', req.headers['content-type']);
+    console.log('Body:', req.body);
+    console.log('Files:', req.files ? Object.keys(req.files) : 'none');
+    
+    // Fallback to empty object to prevent "Cannot destructure property" crash
+    const body = req.body || {};
+    const { name, email, password, role, acceptedTerms } = body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Missing required fields. The form data was not parsed correctly by the server.' });
+    }
 
     if (role === 'engineer' && !acceptedTerms) {
       return res.status(400).json({ message: 'Engineers must accept the Terms and Conditions' });
+    }
+
+    let nationalIdUrl = '';
+    let certificateUrl = '';
+
+    if (role === 'engineer') {
+      if (!req.files || !req.files['nationalId'] || !req.files['certificate']) {
+        return res.status(400).json({ message: 'Engineers must upload National ID and Engineering Certificate' });
+      }
+      nationalIdUrl = `/uploads/${req.files['nationalId'][0].filename}`;
+      certificateUrl = `/uploads/${req.files['certificate'][0].filename}`;
     }
 
     // Check if user exists
@@ -32,7 +54,10 @@ exports.register = async (req, res) => {
       email,
       password,
       role,
-      acceptedTerms: role === 'engineer' ? true : undefined
+      acceptedTerms: role === 'engineer' ? true : undefined,
+      nationalIdUrl,
+      certificateUrl,
+      verificationStatus: role === 'engineer' ? 'pending' : undefined
     });
 
     if (user) {
@@ -73,9 +98,14 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if user is suspended
+    if (user.isSuspended) {
+      return res.status(403).json({ message: 'Your account is suspended by the administrator.' });
+    }
+
     // Check if engineer is approved
     if (user.role === 'engineer' && !user.isApproved) {
-      return res.status(403).json({ message: 'Your account is pending admin approval' });
+      return res.status(403).json({ message: `Your account is ${user.verificationStatus || 'pending verification'}` });
     }
 
     res.json({
@@ -84,6 +114,7 @@ exports.login = async (req, res) => {
       email: user.email,
       role: user.role,
       isApproved: user.isApproved,
+      verificationStatus: user.verificationStatus,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -103,6 +134,7 @@ exports.getMe = async (req, res) => {
       email: user.email,
       role: user.role,
       isApproved: user.isApproved,
+      verificationStatus: user.verificationStatus,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

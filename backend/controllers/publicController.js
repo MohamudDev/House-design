@@ -5,7 +5,7 @@ const Design = require('../models/Design');
 // @access  Public
 exports.getPublicDesigns = async (req, res) => {
   try {
-    const designs = await Design.find({ status: 'approved' })
+    const designs = await Design.find({ status: 'approved', isHidden: { $ne: true } })
       .populate('engineer', 'name email bio specialization isAvailable workingHours')
       .sort('-createdAt');
 

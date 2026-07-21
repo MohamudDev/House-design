@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Design = require('../models/Design');
 const Transaction = require('../models/Transaction');
+const Complaint = require('../models/Complaint');
+const Withdrawal = require('../models/Withdrawal');
 
 // @desc    Get detailed reports
 // @route   GET /api/admin/reports
@@ -11,42 +13,60 @@ exports.getAdminReports = async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const userGrowth = await User.aggregate([
-      { $match: { createdAt: { $gte: sixMonthsAgo } } },
-      {
-        $group: {
-          _id: { $month: "$createdAt" },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id": 1 } }
+    const [
+      userGrowth,
+      designGrowth,
+      roleStats,
+      statusStats,
+      recentUsers,
+      recentDesigns,
+      totalClients,
+      totalEngineers,
+      totalAdmins,
+      totalDesigns,
+      soldDesignsArray,
+      pendingWithdrawals,
+      pendingComplaints,
+      transactions
+    ] = await Promise.all([
+      // 1. Monthly Registration Growth
+      User.aggregate([
+        { $match: { createdAt: { $gte: sixMonthsAgo } } },
+        { $group: { _id: { $month: "$createdAt" }, count: { $sum: 1 } } },
+        { $sort: { "_id": 1 } }
+      ]),
+      // 2. Monthly Design Uploads
+      Design.aggregate([
+        { $match: { createdAt: { $gte: sixMonthsAgo } } },
+        { $group: { _id: { $month: "$createdAt" }, count: { $sum: 1 } } },
+        { $sort: { "_id": 1 } }
+      ]),
+      // 3. User Roles Distribution
+      User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
+      // 4. Design Status Distribution
+      Design.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+      // 5. Recent Activity
+      User.find().sort('-createdAt').limit(5).select('name email role createdAt'),
+      Design.find().sort('-createdAt').limit(5).populate('engineer', 'name'),
+      // 6. Full Stats (Clients, Engineers, Admins, Financials)
+      User.countDocuments({ role: 'client' }),
+      User.countDocuments({ role: 'engineer' }),
+      User.countDocuments({ role: { $in: ['admin', 'superadmin'] } }),
+      Design.countDocuments(),
+      Transaction.distinct('design', { paymentStatus: 'completed' }),
+      Withdrawal.countDocuments({ status: 'pending' }),
+      Complaint.countDocuments({ status: 'pending' }),
+      Transaction.aggregate([
+        { $match: { paymentStatus: 'completed' } },
+        { $group: { _id: null, totalCommission: { $sum: "$commissionAmount" }, totalSales: { $sum: "$amountPaid" } } }
+      ])
     ]);
 
-    // 2. Monthly Design Uploads (Last 6 months)
-    const designGrowth = await Design.aggregate([
-      { $match: { createdAt: { $gte: sixMonthsAgo } } },
-      {
-        $group: {
-          _id: { $month: "$createdAt" },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id": 1 } }
-    ]);
-
-    // 3. User Roles Distribution
-    const roleStats = await User.aggregate([
-      { $group: { _id: "$role", count: { $sum: 1 } } }
-    ]);
-
-    // 4. Design Status Distribution
-    const statusStats = await Design.aggregate([
-      { $group: { _id: "$status", count: { $sum: 1 } } }
-    ]);
-
-    // 5. Recent Activity
-    const recentUsers = await User.find().sort('-createdAt').limit(5).select('name email role createdAt');
-    const recentDesigns = await Design.find().sort('-createdAt').limit(5).populate('engineer', 'name');
+    // Calculate derived stats
+    const totalSoldDesigns = soldDesignsArray.length;
+    const totalUnsoldDesigns = Math.max(0, totalDesigns - totalSoldDesigns);
+    const totalCommission = transactions.length > 0 ? transactions[0].totalCommission : 0;
+    const totalSales = transactions.length > 0 ? transactions[0].totalSales : 0;
 
     res.status(200).json({
       success: true,
@@ -56,7 +76,19 @@ exports.getAdminReports = async (req, res) => {
         roleStats,
         statusStats,
         recentUsers,
-        recentDesigns
+        recentDesigns,
+        fullStats: {
+          totalClients,
+          totalEngineers,
+          totalAdmins,
+          totalDesigns,
+          totalSoldDesigns,
+          totalUnsoldDesigns,
+          pendingWithdrawals,
+          pendingComplaints,
+          totalCommission,
+          totalSales
+        }
       }
     });
   } catch (error) {
@@ -128,11 +160,16 @@ exports.getUsers = async (req, res) => {
 // @access  Private/Admin
 exports.updateUserStatus = async function(req, res, next) {
   try {
-    const { isApproved } = req.body;
+    const { isApproved, verificationStatus } = req.body;
     
+    let updateFields = { isApproved };
+    if (verificationStatus) {
+      updateFields.verificationStatus = verificationStatus;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { isApproved },
+      updateFields,
       { new: true }
     );
 
@@ -243,6 +280,157 @@ exports.updateAdminSettings = async (req, res) => {
         role: user.role
       }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create a new user (Client or Engineer)
+// @route   POST /api/admin/users
+// @access  Private/Admin
+exports.createUser = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+    
+    if (role !== 'client' && role !== 'engineer') {
+      return res.status(400).json({ message: 'Role must be client or engineer' });
+    }
+
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      isApproved: role === 'engineer' ? true : undefined,
+      verificationStatus: role === 'engineer' ? 'verified' : undefined,
+      acceptedTerms: role === 'engineer' ? true : undefined
+    });
+    
+    res.status(201).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create a new Admin
+// @route   POST /api/admin/admins
+// @access  Private/SuperAdmin
+exports.createAdmin = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const userExists = await User.findOne({ email });
+    if (userExists) return res.status(400).json({ message: 'User already exists' });
+    
+    const admin = await User.create({
+      name, email, password, role: 'admin', isApproved: true
+    });
+    res.status(201).json({ success: true, data: admin });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update Admin
+// @route   PUT /api/admin/admins/:id
+// @access  Private/SuperAdmin
+exports.updateAdmin = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const admin = await User.findById(req.params.id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    if (admin.role === 'superadmin') return res.status(403).json({ message: 'Cannot modify Super Admin' });
+    
+    if (name) admin.name = name;
+    if (email) admin.email = email;
+    if (password) admin.password = password;
+    
+    await admin.save();
+    res.status(200).json({ success: true, data: admin });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Delete Admin
+// @route   DELETE /api/admin/admins/:id
+// @access  Private/SuperAdmin
+exports.deleteAdmin = async (req, res) => {
+  try {
+    const admin = await User.findById(req.params.id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    if (admin.role === 'superadmin') return res.status(403).json({ message: 'Cannot delete Super Admin' });
+    
+    await User.deleteOne({ _id: req.params.id });
+    res.status(200).json({ success: true, message: 'Admin removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Suspend User
+// @route   PUT /api/admin/users/:id/suspend
+// @access  Private/Admin
+exports.suspendUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role === 'superadmin') return res.status(403).json({ message: 'Cannot suspend Super Admin' });
+    
+    user.isSuspended = true;
+    await user.save();
+    
+    if (user.role === 'engineer') {
+      await Design.updateMany({ engineer: user._id }, { isHidden: true });
+    }
+    
+    res.status(200).json({ success: true, message: 'User suspended successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Activate User
+// @route   PUT /api/admin/users/:id/activate
+// @access  Private/Admin
+exports.activateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    user.isSuspended = false;
+    await user.save();
+    
+    if (user.role === 'engineer') {
+      await Design.updateMany({ engineer: user._id }, { isHidden: false });
+    }
+    
+    res.status(200).json({ success: true, message: 'User activated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Hide Design
+// @route   PUT /api/admin/designs/:id/hide
+// @access  Private/Admin
+exports.hideDesign = async (req, res) => {
+  try {
+    const design = await Design.findById(req.params.id);
+    if (!design) return res.status(404).json({ message: 'Design not found' });
+    
+    design.isHidden = !design.isHidden;
+    await design.save();
+    
+    res.status(200).json({ success: true, message: design.isHidden ? 'Design hidden' : 'Design restored', isHidden: design.isHidden });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

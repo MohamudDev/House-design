@@ -3,19 +3,26 @@ const router = express.Router();
 const { 
   getAdminStats, 
   getUsers, 
+  createUser,
   updateUserStatus, 
   deleteUser, 
   getDesigns, 
   updateDesignStatus,
+  hideDesign,
   getAdminReports,
-  updateAdminSettings
+  updateAdminSettings,
+  createAdmin,
+  updateAdmin,
+  deleteAdmin,
+  suspendUser,
+  activateUser
 } = require('../controllers/adminController');
 const { getAllWithdrawals, updateWithdrawalStatus } = require('../controllers/walletController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Apply protection and specific role authorization to all routes in this file
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'superadmin'));
 
 // Stats & Reports Routes
 router.get('/stats', getAdminStats);
@@ -24,7 +31,8 @@ router.put('/settings', updateAdminSettings);
 
 // User Management Routes
 router.route('/users')
-  .get(getUsers);
+  .get(getUsers)
+  .post(createUser);
 
 router.route('/users/:id/status')
   .put(updateUserStatus);
@@ -32,12 +40,22 @@ router.route('/users/:id/status')
 router.route('/users/:id')
   .delete(deleteUser);
 
+router.put('/users/:id/suspend', suspendUser);
+router.put('/users/:id/activate', activateUser);
+
+// Superadmin ONLY routes
+router.post('/admins', authorize('superadmin'), createAdmin);
+router.put('/admins/:id', authorize('superadmin'), updateAdmin);
+router.delete('/admins/:id', authorize('superadmin'), deleteAdmin);
+
 // Design Management Routes
 router.route('/designs')
   .get(getDesigns);
 
 router.route('/designs/:id/status')
   .put(updateDesignStatus);
+
+router.put('/designs/:id/hide', hideDesign);
 
 // Withdrawal Routes
 router.route('/withdrawals')

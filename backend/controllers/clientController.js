@@ -8,7 +8,7 @@ const Message = require('../models/Message');
 exports.getApprovedDesigns = async (req, res) => {
   try {
     console.log('DEBUG: getApprovedDesigns called by user:', req.user.id);
-    const designs = await Design.find({ status: 'approved' })
+    const designs = await Design.find({ status: 'approved', isHidden: { $ne: true } })
       .populate('engineer', 'name email bio specialization isAvailable workingHours')
       .sort('-createdAt');
 
@@ -30,7 +30,7 @@ exports.getApprovedDesigns = async (req, res) => {
 // @access  Private/Client
 exports.getDesignById = async (req, res) => {
   try {
-    const design = await Design.findOne({ _id: req.params.id, status: 'approved' })
+    const design = await Design.findOne({ _id: req.params.id, status: 'approved', isHidden: { $ne: true } })
       .populate('engineer', 'name email bio specialization isAvailable workingHours');
 
     if (!design) {
@@ -49,7 +49,7 @@ exports.getFavorites = async (req, res) => {
   try {
     const user = await req.user.populate({
       path: 'favorites',
-      match: { status: 'approved' },
+      match: { status: 'approved', isHidden: { $ne: true } },
       populate: {
         path: 'engineer',
         select: 'name email bio specialization isAvailable workingHours'

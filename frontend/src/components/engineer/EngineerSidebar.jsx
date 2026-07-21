@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, UploadCloud, FolderOpen, MessageSquare, Calendar, LogOut, Briefcase, X } from 'lucide-react';
+import { LayoutDashboard, UploadCloud, FolderOpen, MessageSquare, Calendar, LogOut, Briefcase, X, AlertCircle, BarChart3 } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { SocketContext } from '../../context/SocketContext';
@@ -12,7 +12,9 @@ const EngineerSidebar = ({ isOpen, setIsSidebarOpen }) => {
     { name: 'Dashboard', path: '/engineer-dashboard', icon: <LayoutDashboard size={20} />, exact: true },
     { name: 'Upload Design', path: '/engineer-dashboard/upload', icon: <UploadCloud size={20} /> },
     { name: 'My Designs', path: '/engineer-dashboard/designs', icon: <FolderOpen size={20} /> },
+    { name: 'Reports', path: '/engineer-dashboard/reports', icon: <BarChart3 size={20} /> },
     { name: 'Messages', path: '/engineer-dashboard/messages', icon: <MessageSquare size={20} /> },
+    { name: 'Complaints', path: '/engineer-dashboard/complaints', icon: <AlertCircle size={20} /> },
     { name: 'Availability', path: '/engineer-dashboard/availability', icon: <Calendar size={20} /> },
   ];
 
