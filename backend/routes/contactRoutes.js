@@ -22,7 +22,7 @@ router.get('/my/unread', getUnreadReplies);
 router.put('/my/read/:id', markReplyRead);
 
 // Protected routes for Admin
-router.use(authorize('admin'));
+router.use(authorize('admin', 'superadmin'));
 
 router.get('/', getContacts);
 router.get('/unread', getUnreadContacts);

@@ -15,8 +15,8 @@ router.post('/', protect, upload.single('attachment'), submitComplaint);
 router.get('/my', protect, getMyComplaints);
 
 // Admin routes
-router.get('/', protect, authorize('admin'), getAllComplaints);
-router.put('/:id/status', protect, authorize('admin'), updateComplaintStatus);
-router.put('/:id/reply', protect, authorize('admin'), replyToComplaint);
+router.get('/', protect, authorize('admin', 'superadmin'), getAllComplaints);
+router.put('/:id/status', protect, authorize('admin', 'superadmin'), updateComplaintStatus);
+router.put('/:id/reply', protect, authorize('admin', 'superadmin'), replyToComplaint);
 
 module.exports = router;

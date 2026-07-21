@@ -33,12 +33,7 @@ const Landing = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      if (user.role === 'engineer') navigate('/engineer-dashboard');
-      else if (user.role === 'admin' || user.role === 'superadmin') navigate('/admin-dashboard');
-    }
-  }, [user, navigate]);
+
 
   useEffect(() => {
     const fetchPublicDesigns = async () => {
