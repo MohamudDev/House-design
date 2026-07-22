@@ -6,12 +6,14 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // All client routes are protected
 router.use(protect);
+
+router.get('/designs/:id', getDesignById);
+
 router.use(authorize('client'));
 
 router.get('/designs', getApprovedDesigns);
 router.get('/favorites', getFavorites);
 router.post('/favorites/:id', toggleFavorite);
-router.get('/designs/:id', getDesignById);
 router.post('/designs/:id/rate', rateDesign);
 router.post('/engineers/:id/rate', rateEngineer);
 router.post('/checkout/:designId', checkout);

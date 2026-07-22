@@ -206,7 +206,14 @@ const Landing = () => {
                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg text-xs font-black uppercase tracking-widest mb-4 inline-block">
                           {design.houseType}
                         </span>
-                        <h3 className="text-3xl font-black mb-3">{design.title}</h3>
+                        <h3 className="text-3xl font-black mb-3 flex items-center justify-between w-full">
+                          <span>{design.title}</span>
+                          {design.ratings && design.ratings.length > 0 && (
+                            <span className="text-sm font-bold text-amber-400 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                              ★ {(design.ratings.reduce((acc, r) => acc + r.rating, 0) / design.ratings.length).toFixed(1)}
+                            </span>
+                          )}
+                        </h3>
                         
                         <div className="flex gap-4 mb-6">
                           <div className="flex items-center gap-1.5 text-slate-300 text-sm font-bold">

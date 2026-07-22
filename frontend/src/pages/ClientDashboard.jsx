@@ -232,10 +232,15 @@ const ClientDashboard = () => {
 
                 {/* Content Area */}
                 <div className="p-7">
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
                       {design.title}
                     </h3>
+                    {design.ratings && design.ratings.length > 0 && (
+                      <span className="flex items-center gap-1 text-xs font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg shrink-0">
+                        ★ {(design.ratings.reduce((acc, r) => acc + r.rating, 0) / design.ratings.length).toFixed(1)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">

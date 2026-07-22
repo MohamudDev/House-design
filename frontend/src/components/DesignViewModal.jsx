@@ -51,13 +51,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
       }
     };
 
-    if (user?.role === 'client') {
-      fetchDesignDetails();
-    } else {
-      if (initialDesign && initialDesign.ratings) {
-        setRatingsList(initialDesign.ratings);
-      }
-    }
+    fetchDesignDetails();
   }, [initialDesign, user]);
 
   const handleRateDesign = async (e) => {
