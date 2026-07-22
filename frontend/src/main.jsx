@@ -3,6 +3,18 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import axios from 'axios'
+import { registerSW } from 'virtual:pwa-register'
+
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    console.log('New content available, reloading PWA app...')
+    updateSW(true)
+  },
+  onOfflineReady() {
+    console.log('PWA app ready to work offline')
+  }
+})
 
 const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5004';
 axios.defaults.baseURL = backendUrl;
