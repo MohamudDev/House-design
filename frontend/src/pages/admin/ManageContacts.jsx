@@ -19,6 +19,14 @@ const ManageContacts = () => {
       };
       const { data } = await axios.get('/api/contact', config);
       setContacts(data.data);
+
+      const unreadIds = data.data.filter(c => !c.isRead).map(c => c._id);
+      if (unreadIds.length > 0) {
+        await Promise.all(unreadIds.map(id => 
+          axios.put(`/api/contact/${id}/read`, {}, config)
+        ));
+        window.dispatchEvent(new Event('contactsMarkedRead'));
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error fetching messages');
     } finally {

@@ -23,13 +23,24 @@ const AdminDashboard = () => {
         setShowPopover(false);
       }
     };
+    
+    const handleMarkedRead = () => {
+      fetchUnreadContacts();
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('contactsMarkedRead', handleMarkedRead);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('contactsMarkedRead', handleMarkedRead);
+    };
   }, []);
 
   useEffect(() => {
     if (location.pathname === '/admin-dashboard/contacts') {
       setHasOpenedPopover(true);
+      fetchUnreadContacts();
     }
   }, [location.pathname]);
 
