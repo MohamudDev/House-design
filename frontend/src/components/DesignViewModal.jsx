@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import ModelViewer from './ModelViewer';
 import PaymentModal from './client/PaymentModal';
 
-const DesignViewModal = ({ design, onClose }) => {
+const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const { user } = useContext(AuthContext);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageContent, setMessageContent] = useState('');
@@ -17,6 +17,83 @@ const DesignViewModal = ({ design, onClose }) => {
 
   const [viewMode, setViewMode] = useState('model');
   const [currentRoomIndex, setCurrentRoomIndex] = useState(0);
+
+  const [currentDesign, setCurrentDesign] = useState(initialDesign);
+  const [ratingsList, setRatingsList] = useState([]);
+  const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  const design = currentDesign;
+
+  useEffect(() => {
+    setCurrentDesign(initialDesign);
+  }, [initialDesign]);
+
+  useEffect(() => {
+    const fetchDesignDetails = async () => {
+      try {
+        if (!initialDesign || !initialDesign._id) return;
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/designs/${initialDesign._id}`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentDesign(data.data);
+          if (data.data.ratings) {
+            setRatingsList(data.data.ratings);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch design details:', err);
+      }
+    };
+
+    if (user?.role === 'client') {
+      fetchDesignDetails();
+    } else {
+      if (initialDesign && initialDesign.ratings) {
+        setRatingsList(initialDesign.ratings);
+      }
+    }
+  }, [initialDesign, user]);
+
+  const handleRateDesign = async (e) => {
+    e.preventDefault();
+    if (userRating < 1 || userRating > 5 || !userComment.trim()) return;
+
+    try {
+      setSubmittingRating(true);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/designs/${design._id}/rate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          rating: userRating,
+          comment: userComment
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setRatingsList(data.ratings);
+        setUserComment('');
+        setUserRating(0);
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || 'Failed to submit rating');
+      }
+    } catch (error) {
+      console.error('Failed to submit rating:', error);
+      alert('Network error occurred');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   if (!design) return null;
 
@@ -339,6 +416,78 @@ const DesignViewModal = ({ design, onClose }) => {
                 </div>
               </div>
             )}
+
+            {/* Ratings & Reviews Section */}
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Ratings & Reviews</h3>
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg">
+                  ★ {ratingsList.length > 0 ? (ratingsList.reduce((acc, r) => acc + r.rating, 0) / ratingsList.length).toFixed(1) : '0.0'} ({ratingsList.length})
+                </span>
+              </div>
+
+              {/* Reviews List */}
+              <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                {ratingsList.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">No ratings yet for this design.</p>
+                ) : (
+                  ratingsList.map((r, index) => (
+                    <div key={index} className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {r.user?.name || 'Anonymous User'}
+                        </span>
+                        <div className="flex text-amber-500 text-[10px]">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <span key={i}>{i < r.rating ? '★' : '☆'}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{r.comment}"</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Submit Review Form (Clients only) */}
+              {user?.role === 'client' && (
+                <form onSubmit={handleRateDesign} className="space-y-3 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Your Rating:</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setUserRating(star)}
+                          className={`text-lg transition-colors ${star <= userRating ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Write a comment..."
+                      value={userComment}
+                      onChange={(e) => setUserComment(e.target.value)}
+                      className="flex-1 text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={submittingRating || userRating === 0 || !userComment.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors"
+                    >
+                      Rate
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
 
             {/* Engineer Profile Section */}
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">

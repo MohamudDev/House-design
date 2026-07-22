@@ -31,7 +31,8 @@ exports.getApprovedDesigns = async (req, res) => {
 exports.getDesignById = async (req, res) => {
   try {
     const design = await Design.findOne({ _id: req.params.id, status: 'approved', isHidden: { $ne: true } })
-      .populate('engineer', 'name email bio specialization isAvailable workingHours');
+      .populate('engineer', 'name email bio specialization isAvailable workingHours')
+      .populate('ratings.user', 'name');
 
     if (!design) {
       return res.status(404).json({ success: false, message: 'Design not found or not approved' });
@@ -156,6 +157,60 @@ exports.rateEngineer = async (req, res) => {
       success: true,
       message: 'Feedback submitted successfully',
       ratings: engineer.ratings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Rate a design
+// @route   POST /api/client/designs/:id/rate
+// @access  Private/Client
+exports.rateDesign = async (req, res) => {
+  try {
+    const designId = req.params.id;
+    const userId = req.user._id;
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+    }
+
+    if (!comment) {
+      return res.status(400).json({ success: false, message: 'Please provide a comment' });
+    }
+
+    const design = await Design.findById(designId);
+    if (!design) {
+      return res.status(404).json({ success: false, message: 'Design not found' });
+    }
+
+    // Check if user already rated this design
+    const existingRatingIndex = design.ratings.findIndex(r => r.user.toString() === userId.toString());
+
+    if (existingRatingIndex !== -1) {
+      // Update existing
+      design.ratings[existingRatingIndex].rating = Number(rating);
+      design.ratings[existingRatingIndex].comment = comment;
+      design.ratings[existingRatingIndex].createdAt = Date.now();
+    } else {
+      // Add new
+      design.ratings.push({
+        user: userId,
+        rating: Number(rating),
+        comment
+      });
+    }
+
+    await design.save();
+
+    // Populate user name and return updated ratings
+    const updatedDesign = await Design.findById(designId).populate('ratings.user', 'name');
+
+    res.status(200).json({
+      success: true,
+      message: 'Design rated successfully',
+      ratings: updatedDesign.ratings
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

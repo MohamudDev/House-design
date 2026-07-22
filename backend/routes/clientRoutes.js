@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getApprovedDesigns, getDesignById, getFavorites, toggleFavorite, rateEngineer } = require('../controllers/clientController');
+const { getApprovedDesigns, getDesignById, getFavorites, toggleFavorite, rateEngineer, rateDesign } = require('../controllers/clientController');
 const { checkout, getPurchases } = require('../controllers/paymentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -12,6 +12,7 @@ router.get('/designs', getApprovedDesigns);
 router.get('/favorites', getFavorites);
 router.post('/favorites/:id', toggleFavorite);
 router.get('/designs/:id', getDesignById);
+router.post('/designs/:id/rate', rateDesign);
 router.post('/engineers/:id/rate', rateEngineer);
 router.post('/checkout/:designId', checkout);
 router.get('/purchases', getPurchases);
