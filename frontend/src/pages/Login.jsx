@@ -20,10 +20,16 @@ const Login = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      const userRole = result.user.role;
-      if (userRole === 'admin' || userRole === 'superadmin') navigate('/admin-dashboard');
-      else if (userRole === 'engineer') navigate('/engineer-dashboard');
-      else navigate('/');
+      const userRole = (result.user.role || '').toLowerCase().trim();
+      if (userRole === 'admin' || userRole === 'superadmin') {
+        navigate('/admin-dashboard');
+      } else if (userRole === 'engineer') {
+        navigate('/engineer-dashboard');
+      } else if (userRole === 'client') {
+        navigate('/client-dashboard');
+      } else {
+        navigate('/');
+      }
     } else {
       setError(result.message || 'Failed to login');
       setIsLoading(false);

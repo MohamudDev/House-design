@@ -99,6 +99,12 @@ const Navbar = () => {
             <Link to="/client-dashboard/my-designs" className="hover:text-white transition-colors">My Design</Link>
           </>
         )}
+        {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
+          <Link to="/admin-dashboard" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md active:scale-95">Admin Dashboard</Link>
+        )}
+        {user?.role?.toLowerCase().trim() === 'engineer' && (
+          <Link to="/engineer-dashboard" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md active:scale-95">Engineer Dashboard</Link>
+        )}
         <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
         <Link to="/services" className="hover:text-white transition-colors">Services</Link>
         <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
@@ -211,6 +217,12 @@ const Navbar = () => {
               <Link to="/client-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Marketplace</Link>
               <Link to="/client-dashboard/my-designs" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">My Design</Link>
             </>
+          )}
+          {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
+            <Link to="/admin-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="bg-indigo-600 text-white font-bold px-6 py-2 rounded-xl text-lg">Admin Dashboard</Link>
+          )}
+          {user?.role?.toLowerCase().trim() === 'engineer' && (
+            <Link to="/engineer-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="bg-indigo-600 text-white font-bold px-6 py-2 rounded-xl text-lg">Engineer Dashboard</Link>
           )}
           <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">About Us</Link>
           <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Services</Link>
