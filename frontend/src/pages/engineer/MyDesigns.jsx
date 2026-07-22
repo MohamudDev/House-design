@@ -82,6 +82,7 @@ const MyDesigns = () => {
                   <th className="p-4 pl-6">Design Title</th>
                   <th className="p-4">Type</th>
                   <th className="p-4">Upload Date</th>
+                  <th className="p-4">Rating</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 pr-6 text-right">Actions</th>
                 </tr>
@@ -101,6 +102,12 @@ const MyDesigns = () => {
                     </td>
                     <td className="p-4 text-slate-600 dark:text-slate-300">{design.houseType}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300">{new Date(design.createdAt).toLocaleDateString()}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300">
+                      <span className="flex items-center gap-1 font-bold text-amber-500 text-sm">
+                        ★ {design.ratings && design.ratings.length > 0 ? (design.ratings.reduce((acc, r) => acc + r.rating, 0) / design.ratings.length).toFixed(1) : '0.0'}
+                        <span className="text-slate-400 dark:text-slate-500 text-xs font-semibold">({design.ratings ? design.ratings.length : 0})</span>
+                      </span>
+                    </td>
                     <td className="p-4">
                       {getStatusBadge(design.status)}
                     </td>
