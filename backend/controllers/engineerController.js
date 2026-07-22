@@ -102,7 +102,9 @@ exports.uploadDesign = async (req, res) => {
 // @access  Private/Engineer
 exports.getMyDesigns = async (req, res) => {
   try {
-    const designs = await Design.find({ engineer: req.user.id }).sort('-createdAt');
+    const designs = await Design.find({ engineer: req.user.id })
+      .populate('ratings.user', 'name')
+      .sort('-createdAt');
     res.status(200).json({ success: true, data: designs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

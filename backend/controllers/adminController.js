@@ -213,7 +213,10 @@ exports.deleteUser = async (req, res) => {
 // @access  Private/Admin
 exports.getDesigns = async (req, res) => {
   try {
-    const designs = await Design.find({}).populate('engineer', 'name email').sort('-createdAt');
+    const designs = await Design.find({})
+      .populate('engineer', 'name email')
+      .populate('ratings.user', 'name')
+      .sort('-createdAt');
     res.status(200).json({ success: true, data: designs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
