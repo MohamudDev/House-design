@@ -31,6 +31,10 @@ const MessagesView = () => {
   const audioChunksRef = useRef([]);
   const shouldSaveRef = useRef(true);
 
+  // Message Edit/Delete States
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -112,10 +116,24 @@ const MessagesView = () => {
         fetchInbox();
       };
 
+      const editHandler = (editedMsg) => {
+        setMessages((prev) => prev.map(m => m._id === editedMsg._id ? editedMsg : m));
+        fetchInbox();
+      };
+
+      const deleteHandler = ({ messageId }) => {
+        setMessages((prev) => prev.filter(m => m._id !== messageId));
+        fetchInbox();
+      };
+
       socket.on('message received', messageHandler);
+      socket.on('message edited', editHandler);
+      socket.on('message deleted', deleteHandler);
 
       return () => {
         socket.off('message received', messageHandler);
+        socket.off('message edited', editHandler);
+        socket.off('message deleted', deleteHandler);
       };
     }
   }, [socket, activePartner]);
@@ -215,6 +233,55 @@ const MessagesView = () => {
       console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleStartEdit = (msg) => {
+    setEditingMessageId(msg._id);
+    setEditingText(msg.content);
+  };
+
+  const handleSaveEdit = async (e, id) => {
+    e.preventDefault();
+    if (!editingText.trim()) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ content: editingText })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => prev.map(m => m._id === id ? data.message : m));
+        setEditingMessageId(null);
+        fetchInbox();
+      }
+    } catch (err) {
+      console.error('Failed to edit message:', err);
+    }
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (!window.confirm('Hubaal ma tahay inaad tirtirto fariintan? (Are you sure you want to delete this message?)')) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => prev.filter(m => m._id !== id));
+        fetchInbox();
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err);
     }
   };
 
@@ -408,10 +475,58 @@ const MessagesView = () => {
                         </div>
                       )}
 
-                      {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
-                      <div className={`text-[10px] mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
-                        {format(new Date(msg.createdAt), 'h:mm a')}
-                      </div>
+                      {editingMessageId === msg._id ? (
+                        <form onSubmit={(e) => handleSaveEdit(e, msg._id)} className="flex flex-col gap-2 min-w-[200px] mt-1">
+                          <input 
+                            type="text" 
+                            value={editingText} 
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-indigo-700 text-white border border-indigo-500 focus:outline-none placeholder-indigo-300"
+                            autoFocus
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button 
+                              type="button" 
+                              onClick={() => setEditingMessageId(null)}
+                              className="text-[10px] text-indigo-200 hover:text-white hover:underline transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              type="submit"
+                              className="text-[10px] text-white font-bold hover:underline transition-colors"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                          <div className={`text-[10px] mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'} flex items-center justify-end gap-1.5`}>
+                            {msg.isEdited && <span className="italic opacity-75">(edited)</span>}
+                            <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
+                          </div>
+                          {isMe && (
+                            <div className="flex gap-2 justify-end text-[10px] mt-1 text-indigo-200 opacity-60 hover:opacity-100 transition-opacity">
+                              {!msg.attachmentUrl && (
+                                <button 
+                                  onClick={() => handleStartEdit(msg)} 
+                                  className="hover:underline hover:text-white"
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => handleDeleteMessage(msg._id)} 
+                                className="hover:underline hover:text-white"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 );
