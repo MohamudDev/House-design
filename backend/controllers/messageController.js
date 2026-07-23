@@ -32,6 +32,8 @@ const sendMessage = async (req, res) => {
         attachmentType = 'video';
       } else if (req.file.mimetype.startsWith('image/')) {
         attachmentType = 'image';
+      } else if (req.file.mimetype.startsWith('audio/') || req.file.filename.match(/\.(webm|mp3|wav|ogg|m4a|aac|3gp)$/i)) {
+        attachmentType = 'audio';
       } else if (req.file.filename.match(/\.(glb|gltf|obj|stl|fbx)$/i) || req.file.mimetype.includes('model') || req.file.mimetype.includes('octet-stream')) {
         attachmentType = '3d';
       }

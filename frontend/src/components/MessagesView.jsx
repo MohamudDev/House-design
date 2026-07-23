@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
-import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star } from 'lucide-react';
+import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star, Mic } from 'lucide-react';
 import { format } from 'date-fns';
 
 const MessagesView = () => {
@@ -23,9 +23,87 @@ const MessagesView = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   
+  // Voice Recording states & refs
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState('');
+  const recordingTimerRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
   const fileInputRef = useRef(null);
-  
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    };
+  }, []);
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], "voice_message.webm", { type: "audio/webm" });
+        setSelectedFile(file);
+        setFilePreview('audio_preview');
+        setAudioPreviewUrl(URL.createObjectURL(audioBlob));
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Failed to start voice recording", err);
+      alert("Failed to access microphone. Please check permissions.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.onstop = () => {
+        const stream = mediaRecorder.stream;
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
+      mediaRecorder.stop();
+    }
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    audioChunksRef.current = [];
+  };
 
   // Fetch Inbox
   useEffect(() => {
@@ -113,6 +191,7 @@ const MessagesView = () => {
   const removeFile = () => {
     setSelectedFile(null);
     setFilePreview(null);
+    setAudioPreviewUrl('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -238,6 +317,7 @@ const MessagesView = () => {
                     {convo.latestMessage.attachmentType === 'image' ? '🖼️ Image attached' : 
                      convo.latestMessage.attachmentType === 'video' ? '🎥 Video attached' : 
                      convo.latestMessage.attachmentType === '3d' ? '📦 3D Model attached' : 
+                     convo.latestMessage.attachmentType === 'audio' ? '🎵 Voice message' :
                      convo.latestMessage.content}
                   </p>
                 </div>
@@ -329,6 +409,16 @@ const MessagesView = () => {
                         </div>
                       )}
 
+                      {msg.attachmentUrl && msg.attachmentType === 'audio' && (
+                        <div className="mb-2 min-w-[240px]">
+                          <audio 
+                            src={`${msg.attachmentUrl}`} 
+                            controls 
+                            className="w-full max-h-9 rounded-lg"
+                          />
+                        </div>
+                      )}
+
                       {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                       <div className={`text-[10px] mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
                         {format(new Date(msg.createdAt), 'h:mm a')}
@@ -350,6 +440,10 @@ const MessagesView = () => {
                     ) : filePreview === 'video_preview' ? (
                       <div className="h-20 w-20 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center border border-slate-300 dark:border-slate-600">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400">VIDEO</span>
+                      </div>
+                    ) : filePreview === 'audio_preview' ? (
+                      <div className="h-20 max-w-[240px] bg-slate-200 dark:bg-slate-700 rounded-xl flex items-center justify-center p-2 border border-slate-300 dark:border-slate-600">
+                        <audio src={audioPreviewUrl} controls className="w-full max-h-8" />
                       </div>
                     ) : (
                       <div className="h-20 w-20 bg-slate-200 dark:bg-slate-700 rounded-lg flex flex-col items-center justify-center border border-slate-300 dark:border-slate-600 gap-1">
@@ -375,28 +469,66 @@ const MessagesView = () => {
                   accept="image/*,video/*,.glb,.gltf" 
                   className="hidden" 
                 />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors shrink-0"
-                  title="Attach Image or Video"
-                >
-                  <Paperclip size={20} />
-                </button>
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  className="flex-1 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={isSending || (!newMessage.trim() && !selectedFile)}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0"
-                >
-                  {isSending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={18} />}
-                </button>
+                {!isRecording && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors shrink-0"
+                    title="Attach Image or Video"
+                  >
+                    <Paperclip size={20} />
+                  </button>
+                )}
+                
+                {!isRecording && (
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    className="p-3 text-slate-400 hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors shrink-0"
+                    title="Record Voice Message"
+                  >
+                    <Mic size={20} />
+                  </button>
+                )}
+
+                {isRecording ? (
+                  <div className="flex-1 flex items-center gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2 text-red-600 dark:text-red-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                    <span className="text-sm font-bold">Recording... {formatDuration(recordingDuration)}</span>
+                    <button 
+                      type="button" 
+                      onClick={cancelRecording} 
+                      className="ml-auto text-xs font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={stopRecording} 
+                      className="text-xs font-bold bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg text-white transition-colors"
+                    >
+                      Stop & Save
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  />
+                )}
+
+                {!isRecording && (
+                  <button
+                    type="submit"
+                    disabled={isSending || (!newMessage.trim() && !selectedFile)}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0"
+                  >
+                    {isSending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={18} />}
+                  </button>
+                )}
               </form>
             </div>
           </>
