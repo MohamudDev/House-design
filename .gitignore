@@ -6,3 +6,5 @@ build/
 *.log
 backend/uploads/
 backend/test_*.js
+
+.git-commit-msg.txt
