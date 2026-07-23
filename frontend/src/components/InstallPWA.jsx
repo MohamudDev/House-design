@@ -12,14 +12,27 @@ export default function InstallPWA() {
   } = useRegisterSW({
     onRegisteredSW(swUrl, registration) {
       if (registration) {
+        // Check for a newer deployed version right away. This matters most for
+        // the installed/PWA (home screen) launch, where the cached app shell is
+        // shown instantly but may be stale — without this, a logged-in admin
+        // could briefly land on the cached Landing page instead of the dashboard
+        // until the periodic/focus check eventually fired.
+        registration.update();
+
         // Periodically check for updates every 15 minutes
         setInterval(() => {
           registration.update();
         }, 15 * 60 * 1000);
 
-        // Check for updates when app tab gains focus
+        // Check for updates when app tab/window gains focus or becomes visible
+        // again (covers PWA being resumed from the background on mobile).
         window.addEventListener('focus', () => {
           registration.update();
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update();
+          }
         });
       }
     },

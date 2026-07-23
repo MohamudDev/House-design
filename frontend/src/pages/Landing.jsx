@@ -45,9 +45,11 @@ const Landing = () => {
     if (user) {
       const role = (user.role || '').toLowerCase().trim();
       if (role === 'admin' || role === 'superadmin') {
-        navigate('/admin-dashboard');
+        navigate('/admin-dashboard', { replace: true });
       } else if (role === 'engineer') {
-        navigate('/engineer-dashboard');
+        navigate('/engineer-dashboard', { replace: true });
+      } else if (role === 'client') {
+        navigate('/client-dashboard', { replace: true });
       }
     }
   }, [user, navigate]);

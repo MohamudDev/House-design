@@ -1,0 +1,4 @@
+Fix PWA home-screen redirect to dashboard for logged-in users
+
+- Redirect clients (not just admin/engineer) from Landing to their dashboard when already logged in
+- Check for service worker updates immediately on load and on visibility change, so the installed PWA picks up the latest deployed version right away instead of briefly showing a stale cached Landing page on cold start
