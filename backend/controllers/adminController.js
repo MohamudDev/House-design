@@ -27,7 +27,13 @@ exports.getAdminReports = async (req, res) => {
       soldDesignsArray,
       pendingWithdrawals,
       pendingComplaints,
-      transactions
+      transactions,
+      // Enhanced reports details
+      allUsers,
+      allDesigns,
+      allComplaints,
+      allTransactions,
+      allMessages
     ] = await Promise.all([
       // 1. Monthly Registration Growth
       User.aggregate([
@@ -59,7 +65,13 @@ exports.getAdminReports = async (req, res) => {
       Transaction.aggregate([
         { $match: { paymentStatus: 'completed' } },
         { $group: { _id: null, totalCommission: { $sum: "$commissionAmount" }, totalSales: { $sum: "$amountPaid" } } }
-      ])
+      ]),
+      // All Collections for advanced search, filter, and exports
+      User.find({}).select('-password').sort('-createdAt'),
+      Design.find({}).populate('engineer', 'name email').sort('-createdAt'),
+      Complaint.find({}).populate('complainant', 'name email').populate('against', 'name email').sort('-createdAt'),
+      Transaction.find({}).populate('buyer', 'name email').populate('design', 'title price').sort('-createdAt'),
+      Message.find({}).populate('sender', 'name email').populate('receiver', 'name email').sort('-createdAt')
     ]);
 
     // Calculate derived stats
@@ -77,6 +89,11 @@ exports.getAdminReports = async (req, res) => {
         statusStats,
         recentUsers,
         recentDesigns,
+        allUsers,
+        allDesigns,
+        allComplaints,
+        allTransactions,
+        allMessages,
         fullStats: {
           totalClients,
           totalEngineers,
@@ -91,6 +108,27 @@ exports.getAdminReports = async (req, res) => {
         }
       }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset user password
+// @route   PUT /api/admin/users/:id/reset-password
+// @access  Private/Admin
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.password = password;
+    await user.save();
+    res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

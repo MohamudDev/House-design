@@ -15,7 +15,8 @@ const {
   updateAdmin,
   deleteAdmin,
   suspendUser,
-  activateUser
+  activateUser,
+  resetUserPassword
 } = require('../controllers/adminController');
 const { getAllWithdrawals, updateWithdrawalStatus } = require('../controllers/walletController');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -42,6 +43,7 @@ router.route('/users/:id')
 
 router.put('/users/:id/suspend', suspendUser);
 router.put('/users/:id/activate', activateUser);
+router.put('/users/:id/reset-password', resetUserPassword);
 
 // Superadmin ONLY routes
 router.post('/admins', authorize('superadmin'), createAdmin);
