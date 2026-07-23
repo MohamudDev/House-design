@@ -18,8 +18,84 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   
+  // Selfie camera states
+  const [selfieBlob, setSelfieBlob] = useState(null);
+  const [selfiePreview, setSelfiePreview] = useState('');
+  const [cameraStream, setCameraStream] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (formData.role !== 'engineer') {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      setIsCameraActive(false);
+      setSelfieBlob(null);
+      setSelfiePreview('');
+    }
+  }, [formData.role]);
+
+  const startCamera = async () => {
+    try {
+      setError('');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300 } });
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      setTimeout(() => {
+        const video = document.getElementById('webcam-video');
+        if (video) video.srcObject = stream;
+      }, 100);
+    } catch (err) {
+      console.error("Camera access failed", err);
+      setError("Failed to access camera. Please allow camera permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const captureSelfie = () => {
+    const video = document.getElementById('webcam-video');
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    // Mirror image for canvas too
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+      const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+      setSelfieBlob(file);
+      setSelfiePreview(URL.createObjectURL(blob));
+      stopCamera();
+    }, "image/jpeg", 0.95);
+  };
+
+  const retakeSelfie = () => {
+    setSelfieBlob(null);
+    setSelfiePreview('');
+    startCamera();
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -57,13 +133,14 @@ const Register = () => {
       data.append('acceptedTerms', 'true');
     }
     if (formData.role === 'engineer') {
-      if (!nationalIdFile || !certificateFile) {
-        setError('Please upload both National ID and Engineering Certificate');
+      if (!nationalIdFile || !certificateFile || !selfieBlob) {
+        setError('Please upload National ID, Certificate and take a Selfie verification');
         setIsLoading(false);
         return;
       }
       data.append('nationalId', nationalIdFile);
       data.append('certificate', certificateFile);
+      data.append('selfie', selfieBlob);
     }
 
     const result = await register(data);
@@ -228,6 +305,54 @@ const Register = () => {
                       className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 dark:text-white transition-colors"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Selfie Verification (Sawirkaaga Xaqiijinta)</label>
+                  
+                  {selfiePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col items-center p-4">
+                      <img src={selfiePreview} alt="Selfie Preview" className="w-full max-w-[200px] h-[150px] object-cover rounded-lg border border-slate-200 dark:border-slate-700 mb-3" />
+                      <button
+                        type="button"
+                        onClick={retakeSelfie}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"
+                      >
+                        Retake Selfie (Dib u sawir)
+                      </button>
+                    </div>
+                  ) : isCameraActive ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900 flex flex-col items-center p-4">
+                      <video id="webcam-video" autoPlay playsInline className="w-full max-w-[200px] h-[150px] object-cover rounded-lg bg-black mb-3 transform scale-x-[-1]"></video>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={captureSelfie}
+                          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          Capture Photo (Sawir qaado)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="w-full py-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/50 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 font-semibold text-sm transition-all"
+                    >
+                      <svg className="w-8 h-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Open Camera & Take Selfie (Sawir iska qaad)
+                    </button>
+                  )}
                 </div>
               </>
             )}

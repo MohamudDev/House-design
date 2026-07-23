@@ -32,13 +32,15 @@ exports.register = async (req, res) => {
 
     let nationalIdUrl = '';
     let certificateUrl = '';
+    let selfieUrl = '';
 
     if (role === 'engineer') {
-      if (!req.files || !req.files['nationalId'] || !req.files['certificate']) {
-        return res.status(400).json({ message: 'Engineers must upload National ID and Engineering Certificate' });
+      if (!req.files || !req.files['nationalId'] || !req.files['certificate'] || !req.files['selfie']) {
+        return res.status(400).json({ message: 'Engineers must upload National ID, Certificate, and Selfie Verification' });
       }
       nationalIdUrl = `/uploads/${req.files['nationalId'][0].filename}`;
       certificateUrl = `/uploads/${req.files['certificate'][0].filename}`;
+      selfieUrl = `/uploads/${req.files['selfie'][0].filename}`;
     }
 
     // Check if user exists
@@ -57,6 +59,7 @@ exports.register = async (req, res) => {
       acceptedTerms: role === 'engineer' ? true : undefined,
       nationalIdUrl,
       certificateUrl,
+      selfieUrl,
       verificationStatus: role === 'engineer' ? 'pending' : undefined
     });
 

@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
   // Engineer specific fields
   nationalIdUrl: { type: String, default: '' },
   certificateUrl: { type: String, default: '' },
+  selfieUrl: { type: String, default: '' },
   verificationStatus: {
     type: String,
     enum: ['pending', 'verified', 'rejected'],

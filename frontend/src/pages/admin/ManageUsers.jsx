@@ -299,6 +299,24 @@ const ManageUsers = () => {
                   <p className="text-sm text-slate-500">Not uploaded</p>
                 )}
               </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Selfie Verification</h3>
+                {selectedUserDocs.selfieUrl ? (
+                  <div className="flex flex-col gap-2">
+                    <img 
+                      src={selectedUserDocs.selfieUrl} 
+                      alt="Selfie" 
+                      className="w-full max-w-[200px] h-[150px] object-cover rounded-xl border border-slate-200 dark:border-slate-700"
+                      onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/200x150?text=No+Selfie'; }}
+                    />
+                    <a href={selectedUserDocs.selfieUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1">
+                      <ExternalLink size={12} /> Open original selfie
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Not uploaded</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

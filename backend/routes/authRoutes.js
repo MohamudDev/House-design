@@ -7,7 +7,8 @@ const upload = require('../middleware/uploadMiddleware');
 
 const registerUpload = upload.fields([
   { name: 'nationalId', maxCount: 1 },
-  { name: 'certificate', maxCount: 1 }
+  { name: 'certificate', maxCount: 1 },
+  { name: 'selfie', maxCount: 1 }
 ]);
 
 router.post('/register', registerUpload, register);
