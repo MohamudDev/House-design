@@ -8,7 +8,7 @@ const Message = require('../models/Message');
 // @access  Private/Engineer
 exports.uploadDesign = async (req, res) => {
   try {
-    const { title, houseType, rooms, bathrooms, kitchens, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
+    const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
     // Process files
     const images = req.files['images'] ? req.files['images'].map(file => `/uploads/${file.filename}`) : [];
@@ -65,6 +65,8 @@ exports.uploadDesign = async (req, res) => {
       rooms,
       bathrooms: bathrooms || 1,
       kitchens: kitchens || 1,
+      livingRooms: livingRooms !== undefined ? livingRooms : 1,
+      masterRooms: masterRooms || 0,
       carParking: carParking === 'true' || carParking === true,
       parkingType,
       vehicleType: parsedVehicleType,
@@ -180,23 +182,63 @@ exports.getEngineerStats = async (req, res) => {
     const user = await User.findById(req.user._id);
     const walletBalance = user.walletBalance || 0;
 
+    const totalApartments = designs.filter(d => d.houseType === 'Apartment').length;
+
+    // Full booking history (completed + pending purchase transactions) for this engineer
+    const myTransactions = await Transaction.find({ engineer: req.user._id })
+      .populate('buyer', 'name email')
+      .populate('design', 'title houseType price')
+      .sort('-createdAt');
+
+    const totalBookings = myTransactions.filter(t => t.paymentStatus === 'completed').length;
+
+    // Client messages (closest real proxy for "client requests")
+    const myMessages = await Message.find({ receiver: req.user._id })
+      .populate('sender', 'name email')
+      .populate('designId', 'title')
+      .sort('-createdAt')
+      .limit(100);
+
+    // Monthly growth (current year) for charts
+    const currentYear = new Date().getFullYear();
+    const designGrowth = await Design.aggregate([
+      { $match: { engineer: req.user._id, createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
+      { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
+    ]);
+    const bookingGrowth = await Transaction.aggregate([
+      { $match: { engineer: req.user._id, paymentStatus: 'completed', createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
+      { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
+    ]);
+    const earningsGrowth = await Transaction.aggregate([
+      { $match: { engineer: req.user._id, paymentStatus: 'completed', createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
+      { $group: { _id: { $month: '$createdAt' }, total: { $sum: '$engineerAmount' } } }
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
         totalDesigns,
+        totalApartments,
         pendingDesigns,
         approvedDesigns,
         rejectedDesigns,
         activeProperties,
         totalPropertiesSold,
         totalUnsoldProperties,
+        totalBookings,
         messagesReceived,
         totalMessagesReplied,
         totalPendingReplies,
         totalEarnings,
         walletBalance,
         propertyPerformance,
-        recentActivities
+        recentActivities,
+        myDesigns: designs,
+        myTransactions,
+        myMessages,
+        designGrowth,
+        bookingGrowth,
+        earningsGrowth
       }
     });
   } catch (error) {
@@ -255,7 +297,7 @@ exports.updateProfile = async (req, res) => {
 // @access  Private/Engineer
 exports.updateDesign = async (req, res) => {
   try {
-    const { title, houseType, rooms, bathrooms, kitchens, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
+    const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
     
     let design = await Design.findById(req.params.id);
     
@@ -291,6 +333,8 @@ exports.updateDesign = async (req, res) => {
       rooms,
       bathrooms,
       kitchens,
+      livingRooms,
+      masterRooms,
       carParking: carParking === 'true' || carParking === true,
       parkingType,
       vehicleType: parsedVehicleType,

@@ -9,6 +9,8 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
     rooms: design.rooms || '',
     bathrooms: design.bathrooms || '',
     kitchens: design.kitchens || '',
+    livingRooms: design.livingRooms || '',
+    masterRooms: design.masterRooms || '',
     carParking: design.carParking || false,
     budgetEstimate: design.budgetEstimate || '',
     description: design.description || ''
@@ -121,9 +123,7 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow"
               >
                 <option value="Villa">Villa</option>
-                <option value="Apartment">Apartment</option>
-                <option value="Bungalow">Bungalow</option>
-                <option value="Mansion">Mansion</option>
+                <option value="Apartment">Floor</option>
                 <option value="Townhouse">Townhouse</option>
               </select>
             </div>
@@ -150,6 +150,20 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kitchens / Jiko</label>
               <input type="number" name="kitchens" required min="1" value={formData.kitchens} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" />
             </div>
+
+            {formData.houseType !== 'Apartment' && (
+              <>
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Living Room</label>
+                  <input type="number" name="livingRooms" required min="1" value={formData.livingRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" />
+                </div>
+
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Master Room</label>
+                  <input type="number" name="masterRooms" required min="0" value={formData.masterRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" />
+                </div>
+              </>
+            )}
 
             <div className="col-span-1 md:col-span-1 flex items-center mt-6">
               <label className="flex items-center cursor-pointer">

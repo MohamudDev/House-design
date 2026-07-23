@@ -62,7 +62,7 @@ exports.getAdminReports = async (req, res) => {
       Design.countDocuments(),
       Transaction.distinct('design', { paymentStatus: 'completed' }),
       Withdrawal.countDocuments({ status: 'pending' }),
-      Complaint.countDocuments({ status: 'pending' }),
+      Complaint.countDocuments({ status: 'Pending' }),
       Transaction.aggregate([
         { $match: { paymentStatus: 'completed' } },
         { $group: { _id: null, totalCommission: { $sum: "$commissionAmount" }, totalSales: { $sum: "$amountPaid" } } }
@@ -70,7 +70,7 @@ exports.getAdminReports = async (req, res) => {
       // All Collections for advanced search, filter, and exports
       User.find({}).select('-password').sort('-createdAt'),
       Design.find({}).populate('engineer', 'name email').sort('-createdAt'),
-      Complaint.find({}).populate('complainant', 'name email').populate('against', 'name email').sort('-createdAt'),
+      Complaint.find({}).populate('sender', 'name email').sort('-createdAt'),
       Transaction.find({}).populate('buyer', 'name email').populate('design', 'title price').sort('-createdAt'),
       Message.find({}).populate('sender', 'name email').populate('receiver', 'name email').sort('-createdAt')
     ]);

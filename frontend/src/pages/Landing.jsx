@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Home, Users, ShieldCheck, ChevronRight, Layout, DollarSign, Eye, Search } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import DesignViewModal from '../components/DesignViewModal';
+import { formatHouseType } from '../utils/houseType';
 
 const Landing = () => {
   const { user } = useContext(AuthContext);
@@ -13,6 +14,11 @@ const Landing = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDesign, setSelectedDesign] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const getAvgRating = (design) => {
+    if (!design.ratings || design.ratings.length === 0) return 0;
+    return design.ratings.reduce((acc, r) => acc + r.rating, 0) / design.ratings.length;
+  };
 
   const handleView3D = (design) => {
     if (user) {
@@ -175,7 +181,11 @@ const Landing = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              {designs.filter(d => d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.houseType.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 6).map((design) => (
+              {designs
+                .filter(d => d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.houseType.toLowerCase().includes(searchTerm.toLowerCase()))
+                .sort((a, b) => getAvgRating(b) - getAvgRating(a))
+                .slice(0, 5)
+                .map((design) => (
                 <div key={design._id} className="group cursor-pointer">
                   <div className="relative h-[450px] rounded-[2.5rem] overflow-hidden shadow-xl transition-all duration-700 group-hover:shadow-2xl group-hover:shadow-indigo-200 group-hover:-translate-y-3">
                     {/* Placeholder or Image */}
@@ -204,7 +214,7 @@ const Landing = () => {
                     <div className="absolute inset-0 p-8 flex flex-col justify-end text-white">
                       <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg text-xs font-black uppercase tracking-widest mb-4 inline-block">
-                          {design.houseType}
+                          {formatHouseType(design.houseType)}
                         </span>
                         <h3 className="text-3xl font-black mb-3 flex items-center justify-between w-full">
                           <span>{design.title}</span>

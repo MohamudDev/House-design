@@ -2,23 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, Tooltip
+  LineChart, Line, Tooltip
 } from 'recharts';
 import { 
-  Filter, Calendar, Users, FolderOpen, TrendingUp, Clock, UserCheck, Shield, 
+  Filter, Calendar, Users, FolderOpen, TrendingUp, Clock, Shield, 
   DollarSign, CheckCircle, HelpCircle, AlertTriangle, Building, Search, Download, 
   FileSpreadsheet, FileText, Printer, ChevronLeft, ChevronRight, Eye, Edit2, Trash2, 
   ShieldAlert, Key, MessageSquare, Info, Star, X, Check, EyeOff, LayoutDashboard, 
   Plus, Play, ToggleLeft, Volume2
 } from 'lucide-react';
-
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#3b82f6'];
+import { formatHouseType } from '../../utils/houseType';
 
 const AdminReports = () => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, users, houses, requests, complaints
+  const [activeTab, setActiveTab] = useState('overview'); // overview, users, houses, bookings, complaints
   const [dateRange, setDateRange] = useState('30days'); // today, yesterday, 7days, 30days, thismonth, lastmonth, thisyear, custom
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -30,12 +29,8 @@ const AdminReports = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [propTypeFilter, setPropTypeFilter] = useState('All');
-  const [requestStatusFilter, setRequestStatusFilter] = useState('All');
   const [complaintStatusFilter, setComplaintStatusFilter] = useState('All');
   const [selectedEngineerFilter, setSelectedEngineerFilter] = useState('All');
-  const [selectedClientFilter, setSelectedClientFilter] = useState('All');
-  const [countryFilter, setCountryFilter] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [bedroomsFilter, setBedroomsFilter] = useState('All');
@@ -50,34 +45,27 @@ const AdminReports = () => {
 
   // Column Visibility States
   const [userVisibleColumns, setUserVisibleColumns] = useState({
-    avatar: true, name: true, email: true, role: true, status: true, country: true, date: true, actions: true
+    avatar: true, name: true, email: true, role: true, status: true, date: true, actions: true
   });
   const [houseVisibleColumns, setHouseVisibleColumns] = useState({
-    image: true, title: true, engineer: true, type: true, price: true, specs: true, stats: true, status: true, actions: true
-  });
-  const [requestVisibleColumns, setRequestVisibleColumns] = useState({
-    id: true, client: true, engineer: true, budget: true, deadline: true, status: true, date: true, actions: true
+    image: true, title: true, engineer: true, type: true, price: true, status: true, actions: true
   });
   const [complaintVisibleColumns, setComplaintVisibleColumns] = useState({
-    id: true, complainant: true, against: true, category: true, priority: true, status: true, date: true, actions: true
+    id: true, complainant: true, category: true, status: true, date: true, actions: true
   });
 
   // Table Column Dropdown Controls
   const [showUserColDropdown, setShowUserColDropdown] = useState(false);
   const [showHouseColDropdown, setShowHouseColDropdown] = useState(false);
-  const [showRequestColDropdown, setShowRequestColDropdown] = useState(false);
-  const [showComplaintColDropdown, setShowComplaintColDropdown] = useState(false);
 
   // Bulk Actions
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [selectedHouseIds, setSelectedHouseIds] = useState([]);
-  const [selectedRequestIds, setSelectedRequestIds] = useState([]);
   const [selectedComplaintIds, setSelectedComplaintIds] = useState([]);
 
   // Detail Modal Views
   const [selectedUserReport, setSelectedUserReport] = useState(null);
   const [selectedHouseReport, setSelectedHouseReport] = useState(null);
-  const [selectedRequestReport, setSelectedRequestReport] = useState(null);
   const [selectedComplaintReport, setSelectedComplaintReport] = useState(null);
 
   // Send Message Modal
@@ -94,11 +82,6 @@ const AdminReports = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editUserData, setEditUserData] = useState({ name: '', email: '', role: '', status: '' });
 
-  // Generated Mock/Simulated Collections for Consultation, Booking, Requests
-  const [customRequests, setCustomRequests] = useState([]);
-  const [consultationsCount, setConsultationsCount] = useState(0);
-  const [bookingsCount, setBookingsCount] = useState(0);
-
   // Fetch Reports Data
   const fetchReports = async () => {
     try {
@@ -110,51 +93,6 @@ const AdminReports = () => {
       };
       const { data } = await axios.get('/api/admin/reports', config);
       setReportData(data.data);
-
-      // Relationally formulate custom requests based on existing users
-      const clients = data.data.allUsers.filter(u => u.role === 'client');
-      const engineers = data.data.allUsers.filter(u => u.role === 'engineer');
-      const designsList = data.data.allDesigns;
-      
-      const generatedRequests = Array.from({ length: 18 }, (_, idx) => {
-        const client = clients[idx % clients.length] || { _id: 'mock_c_' + idx, name: `Client User ${idx + 1}`, email: `client${idx}@example.com` };
-        const engineer = engineers[idx % engineers.length] || { _id: 'mock_e_' + idx, name: `Engineer User ${idx + 1}`, email: `eng${idx}@example.com` };
-        const design = designsList[idx % designsList.length] || { title: 'Modern Villa Proposal', houseType: 'Villa' };
-        
-        const createdDate = new Date();
-        createdDate.setDate(createdDate.getDate() - (idx * 3));
-        const deadlineDate = new Date();
-        deadlineDate.setDate(deadlineDate.getDate() + 15 + idx);
-
-        const statuses = ['pending', 'accepted', 'rejected', 'completed'];
-        const status = statuses[idx % statuses.length];
-
-        return {
-          _id: `REQ-${1000 + idx}`,
-          client,
-          engineer,
-          house: {
-            title: design.title,
-            houseType: design.houseType,
-            bedrooms: (idx % 3) + 2,
-            bathrooms: (idx % 2) + 1,
-            parking: idx % 2 === 0,
-            area: 120 + (idx * 25),
-            price: 50000 + (idx * 15000),
-            images: design.images || []
-          },
-          budget: 45000 + (idx * 12000),
-          deadline: deadlineDate.toISOString(),
-          status,
-          createdAt: createdDate.toISOString(),
-          updatedAt: new Date(createdDate.getTime() + 86400000).toISOString()
-        };
-      });
-
-      setCustomRequests(generatedRequests);
-      setConsultationsCount(engineers.length * 4 + clients.length * 2);
-      setBookingsCount(generatedRequests.filter(r => r.status === 'accepted').length + 5);
-
     } catch (err) {
       console.error('Error fetching reports:', err);
       setError(err.response?.data?.message || 'Failed to load report analytics.');
@@ -166,6 +104,23 @@ const AdminReports = () => {
   useEffect(() => {
     fetchReports();
   }, []);
+
+  // Switch report type tab and reset all cross-tab filters to avoid stale filters hiding data
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setRoleFilter('All');
+    setStatusFilter('All');
+    setPropTypeFilter('All');
+    setComplaintStatusFilter('All');
+    setSelectedEngineerFilter('All');
+    setBedroomsFilter('All');
+    setBathroomsFilter('All');
+    setParkingFilter('All');
+    setMinPrice('');
+    setMaxPrice('');
+    setGlobalSearch('');
+  };
 
   // Handle Date Filter logic
   const isWithinDateRange = (createdAtString) => {
@@ -216,67 +171,26 @@ const AdminReports = () => {
     }
   };
 
-  // Helper simulated user fields for UX completeness
-  const enrichUser = (user, idx) => {
-    const randomCountries = ['Somalia', 'Kenya', 'Ethiopia', 'Djibouti', 'Turkey', 'Egypt'];
-    const randomCities = ['Mogadishu', 'Hargeisa', 'Garowe', 'Nairobi', 'Addis Ababa', 'Djibouti City', 'Istanbul', 'Cairo'];
-    const fakePhone = `+252 (61) ${500000 + (idx * 379)}`;
-    const fakeUsername = `@${user.name.split(' ')[0].toLowerCase()}${idx + 9}`;
-    const regDate = new Date(user.createdAt);
-    
-    const lastLogin = new Date(regDate);
-    lastLogin.setDate(lastLogin.getDate() + Math.max(1, idx % 10));
-    
-    const lastActive = new Date(lastLogin);
-    lastActive.setMinutes(lastActive.getMinutes() + (idx * 43));
-
-    const totalLogins = 5 + (idx * 2);
-    const messagesSent = 12 + (idx * 4);
-    const messagesReceived = 15 + (idx * 3);
-    const houseViews = 30 + (idx * 8);
-
+  // Derive real display status from actual account fields
+  const enrichUser = (user) => {
     const isSuspended = user.isSuspended || false;
     const status = isSuspended ? 'blocked' : (user.isApproved ? 'active' : 'inactive');
     const verification = user.verificationStatus || (user.role === 'engineer' ? 'pending' : 'verified');
 
     return {
       ...user,
-      phone: fakePhone,
-      username: fakeUsername,
-      country: randomCountries[idx % randomCountries.length],
-      city: randomCities[idx % randomCities.length],
-      lastLogin: lastLogin.toISOString(),
-      lastActive: lastActive.toISOString(),
-      totalLogins,
-      activity: {
-        messagesSent,
-        messagesReceived,
-        houseViews,
-        favorites: 2 + (idx % 5),
-        savedHouses: 3 + (idx % 4)
-      },
       status,
       verification
     };
   };
 
-  // Enriched User and House lists
-  const enrichedUsers = (reportData?.allUsers || []).map((u, i) => enrichUser(u, i));
-  const enrichedHouses = (reportData?.allDesigns || []).map((h, i) => {
-    const typeList = ['Villa', 'Apartment', 'Townhouse', 'Mansion', 'Bungalow', 'Commercial'];
-    return {
-      ...h,
-      likes: 10 + (i * 4),
-      downloads: 2 + (i * 2),
-      bedrooms: h.bedrooms || (i % 3) + 2,
-      bathrooms: h.bathrooms || (i % 2) + 1,
-      kitchen: (i % 2) + 1,
-      parking: h.parking || (i % 2 === 0 ? 'Yes' : 'No'),
-      area: h.area || 150 + (i * 30),
-      houseType: h.houseType || typeList[i % typeList.length],
-      style: ['Modern', 'Classical', 'Contemporary', 'Minimalist', 'Traditional'][i % 5]
-    };
-  });
+  // Enriched User and House lists (real database fields only)
+  const enrichedUsers = (reportData?.allUsers || []).map(u => enrichUser(u));
+  const enrichedHouses = (reportData?.allDesigns || []).map(h => ({
+    ...h,
+    bedrooms: h.rooms,
+    parking: h.carParking ? 'Yes' : 'No'
+  }));
 
   // Filtering Lists
   const filteredUsers = enrichedUsers.filter(u => {
@@ -290,16 +204,11 @@ const AdminReports = () => {
       if (['verified', 'pending', 'rejected'].includes(matchStatus) && u.verification !== matchStatus) return false;
     }
 
-    if (countryFilter && !u.country.toLowerCase().includes(countryFilter.toLowerCase())) return false;
-    if (cityFilter && !u.city.toLowerCase().includes(cityFilter.toLowerCase())) return false;
-
     if (globalSearch) {
       const search = globalSearch.toLowerCase();
       return (
         u.name.toLowerCase().includes(search) ||
-        u.email.toLowerCase().includes(search) ||
-        u.phone.includes(search) ||
-        u.username.toLowerCase().includes(search)
+        u.email.toLowerCase().includes(search)
       );
     }
     return true;
@@ -330,23 +239,17 @@ const AdminReports = () => {
     return true;
   });
 
-  const filteredRequests = customRequests.filter(r => {
-    if (!isWithinDateRange(r.createdAt)) return false;
-    if (requestStatusFilter !== 'All' && r.status.toLowerCase() !== requestStatusFilter.toLowerCase()) return false;
-    if (selectedEngineerFilter !== 'All' && r.engineer?._id !== selectedEngineerFilter) return false;
-    if (selectedClientFilter !== 'All' && r.client?._id !== selectedClientFilter) return false;
-
-    const budget = r.budget || 0;
-    if (minPrice && budget < parseFloat(minPrice)) return false;
-    if (maxPrice && budget > parseFloat(maxPrice)) return false;
+  const allTransactions = reportData?.allTransactions || [];
+  const filteredTransactions = allTransactions.filter(t => {
+    if (!isWithinDateRange(t.createdAt)) return false;
+    if (activeTab === 'bookings' && statusFilter !== 'All' && t.paymentStatus !== statusFilter.toLowerCase()) return false;
 
     if (globalSearch) {
       const search = globalSearch.toLowerCase();
       return (
-        r._id.toLowerCase().includes(search) ||
-        r.client?.name?.toLowerCase().includes(search) ||
-        r.engineer?.name?.toLowerCase().includes(search) ||
-        r.house?.title.toLowerCase().includes(search)
+        t.buyer?.name?.toLowerCase().includes(search) ||
+        t.design?.title?.toLowerCase().includes(search) ||
+        t._id.toLowerCase().includes(search)
       );
     }
     return true;
@@ -360,10 +263,9 @@ const AdminReports = () => {
       const search = globalSearch.toLowerCase();
       return (
         c._id.toLowerCase().includes(search) ||
-        c.complainant?.name?.toLowerCase().includes(search) ||
-        c.against?.name?.toLowerCase().includes(search) ||
-        c.category.toLowerCase().includes(search) ||
-        c.title.toLowerCase().includes(search)
+        c.sender?.name?.toLowerCase().includes(search) ||
+        c.category?.toLowerCase().includes(search) ||
+        c.subject?.toLowerCase().includes(search)
       );
     }
     return true;
@@ -549,7 +451,6 @@ const AdminReports = () => {
     alert(`Bulk ${action} completed successfully for selected rows.`);
     setSelectedUserIds([]);
     setSelectedHouseIds([]);
-    setSelectedRequestIds([]);
     setSelectedComplaintIds([]);
     fetchReports();
   };
@@ -597,51 +498,36 @@ const AdminReports = () => {
     Uploads: (designGrowth || []).find(d => d._id === (idx + 1))?.count || 0
   }));
 
-  const mockLineChartData = months.map((m, idx) => ({
+  // Booking Trend: completed transactions (design purchases) per month, real data
+  const formattedBookingTrend = months.map((m, idx) => ({
     name: m,
-    Requests: 2 + (idx % 4) + (idx % 3),
-    Consultations: 4 + (idx % 5) + (idx % 2),
-    Complaints: idx % 3 === 0 ? 1 : 0,
-    Messages: 30 + (idx * 8)
+    Bookings: allTransactions.filter(t => t.paymentStatus === 'completed' && new Date(t.createdAt).getMonth() === idx).length
   }));
 
-  const propertyTypeDist = [
-    { name: 'Villa', value: enrichedHouses.filter(h => h.houseType === 'Villa').length || 5 },
-    { name: 'Apartment', value: enrichedHouses.filter(h => h.houseType === 'Apartment').length || 3 },
-    { name: 'Townhouse', value: enrichedHouses.filter(h => h.houseType === 'Townhouse').length || 2 },
-    { name: 'Mansion', value: enrichedHouses.filter(h => h.houseType === 'Mansion').length || 4 },
-    { name: 'Bungalow', value: enrichedHouses.filter(h => h.houseType === 'Bungalow').length || 2 },
-    { name: 'Commercial', value: enrichedHouses.filter(h => h.houseType === 'Commercial').length || 1 }
-  ];
+  // Real activity feed: registrations, uploads & messages, respecting selected Date Range
+  const activityFeed = [
+    ...enrichedUsers.filter(u => isWithinDateRange(u.createdAt)).map(u => ({
+      type: 'registration',
+      date: u.createdAt,
+      text: `${u.name} registered as ${u.role}`
+    })),
+    ...enrichedHouses.filter(h => isWithinDateRange(h.createdAt)).map(h => ({
+      type: 'upload',
+      date: h.createdAt,
+      text: `${h.engineer?.name || 'An engineer'} uploaded "${h.title}"`
+    })),
+    ...(reportData.allMessages || []).filter(m => isWithinDateRange(m.createdAt)).map(m => ({
+      type: 'message',
+      date: m.createdAt,
+      text: `${m.sender?.name || 'Someone'} sent a message to ${m.receiver?.name || 'a user'}`
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
 
-  const houseStyleDist = [
-    { name: 'Modern', value: enrichedHouses.filter(h => h.style === 'Modern').length || 4 },
-    { name: 'Classical', value: enrichedHouses.filter(h => h.style === 'Classical').length || 2 },
-    { name: 'Contemporary', value: enrichedHouses.filter(h => h.style === 'Contemporary').length || 3 },
-    { name: 'Minimalist', value: enrichedHouses.filter(h => h.style === 'Minimalist').length || 1 },
-    { name: 'Traditional', value: enrichedHouses.filter(h => h.style === 'Traditional').length || 2 }
-  ];
-
-  const budgetDist = [
-    { range: '$0 - $100k', value: enrichedHouses.filter(h => h.price <= 100000).length },
-    { range: '$100k - $250k', value: enrichedHouses.filter(h => h.price > 100000 && h.price <= 250000).length },
-    { range: '$250k - $500k', value: enrichedHouses.filter(h => h.price > 250000 && h.price <= 500000).length },
-    { range: '$500k+', value: enrichedHouses.filter(h => h.price > 500000).length }
-  ];
-
-  const topEngineers = enrichedUsers
-    .filter(u => u.role === 'engineer')
-    .map((e, idx) => ({ name: e.name, rating: 4.2 + (idx % 8) * 0.1, uploads: enrichedHouses.filter(h => h.engineer?._id === e._id).length }))
-    .slice(0, 5);
-
-  const topClients = enrichedUsers
-    .filter(u => u.role === 'client')
-    .map((c, idx) => ({ name: c.name, requests: 2 + (idx % 4) }))
-    .slice(0, 5);
-
-  const mostViewedHouses = enrichedHouses
-    .map(h => ({ title: h.title, views: 100 + h.likes * 5 }))
-    .slice(0, 5);
+  const getEngineerAvgRating = (engineerId) => {
+    const ratings = enrichedHouses.filter(h => h.engineer?._id === engineerId).flatMap(h => h.ratings || []);
+    if (ratings.length === 0) return null;
+    return ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+  };
 
   return (
     <div className="space-y-8 print:bg-white print:p-0">
@@ -666,37 +552,40 @@ const AdminReports = () => {
             <Clock size={14} /> Refresh Data
           </button>
           
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
-            <button 
-              onClick={() => setActiveTab('overview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Overview
-            </button>
-            <button 
-              onClick={() => { setActiveTab('users'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Users
-            </button>
-            <button 
-              onClick={() => { setActiveTab('houses'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'houses' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Houses
-            </button>
-            <button 
-              onClick={() => { setActiveTab('requests'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'requests' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Requests
-            </button>
-            <button 
-              onClick={() => { setActiveTab('complaints'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'complaints' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Complaints
-            </button>
+          <div>
+            <span className="block text-[9px] uppercase font-extrabold text-slate-400 tracking-wider mb-1 pl-1 print:hidden">Report Type</span>
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+              <button 
+                onClick={() => handleTabChange('overview')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Overview
+              </button>
+              <button 
+                onClick={() => handleTabChange('users')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Users
+              </button>
+              <button 
+                onClick={() => handleTabChange('houses')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'houses' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Houses
+              </button>
+              <button 
+                onClick={() => handleTabChange('complaints')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'complaints' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Complaints
+              </button>
+              <button 
+                onClick={() => handleTabChange('bookings')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'bookings' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                Payment
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -761,7 +650,7 @@ const AdminReports = () => {
             )}
 
             {/* Status filters */}
-            {(activeTab === 'users' || activeTab === 'houses') && (
+            {(activeTab === 'users' || activeTab === 'houses' || activeTab === 'bookings') && (
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -777,11 +666,17 @@ const AdminReports = () => {
                     <option value="pending">Pending Docs</option>
                     <option value="rejected">Rejected Docs</option>
                   </>
-                ) : (
+                ) : activeTab === 'houses' ? (
                   <>
                     <option value="approved">Approved</option>
                     <option value="pending">Pending</option>
                     <option value="rejected">Rejected</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
                   </>
                 )}
               </select>
@@ -796,26 +691,9 @@ const AdminReports = () => {
               >
                 <option value="All">All Types</option>
                 <option value="villa">Villa</option>
-                <option value="apartment">Apartment</option>
+                <option value="apartment">Floor</option>
                 <option value="townhouse">Townhouse</option>
-                <option value="mansion">Mansion</option>
-                <option value="bungalow">Bungalow</option>
                 <option value="commercial">Commercial</option>
-              </select>
-            )}
-
-            {/* Custom Request Status Filter */}
-            {activeTab === 'requests' && (
-              <select 
-                value={requestStatusFilter}
-                onChange={(e) => setRequestStatusFilter(e.target.value)}
-                className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 focus:outline-none"
-              >
-                <option value="All">All Request Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
-                <option value="completed">Completed</option>
               </select>
             )}
 
@@ -827,9 +705,10 @@ const AdminReports = () => {
                 className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 focus:outline-none"
               >
                 <option value="All">All Complaint Statuses</option>
-                <option value="pending">Open</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Rejected">Rejected</option>
               </select>
             )}
 
@@ -843,7 +722,7 @@ const AdminReports = () => {
                 type="text"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder={`Search ${activeTab === 'overview' ? 'everything' : activeTab}...`}
+                placeholder={`Search ${activeTab === 'overview' ? 'everything' : activeTab === 'bookings' ? 'payments' : activeTab}...`}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white font-medium"
               />
             </div>
@@ -857,17 +736,14 @@ const AdminReports = () => {
               </button>
               <div className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-1.5 hidden group-hover:block z-30 w-44">
                 <button 
-                  onClick={() => {
-                    const data = activeTab === 'users' ? filteredUsers : activeTab === 'houses' ? filteredHouses : activeTab === 'requests' ? filteredRequests : filteredComplaints;
-                    exportToCSV(data, `house_design_platform_${activeTab}_report`);
-                  }}
+                  onClick={handlePrint}
                   className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg"
                 >
-                  <FileText size={14} className="text-emerald-500" /> Export CSV
+                  <Printer size={14} className="text-slate-500" /> Export PDF
                 </button>
                 <button 
                   onClick={() => {
-                    const data = activeTab === 'users' ? filteredUsers : activeTab === 'houses' ? filteredHouses : activeTab === 'requests' ? filteredRequests : filteredComplaints;
+                    const data = activeTab === 'users' ? filteredUsers : activeTab === 'houses' ? filteredHouses : activeTab === 'bookings' ? filteredTransactions : filteredComplaints;
                     exportToExcel(data, `house_design_platform_${activeTab}_excel`);
                   }}
                   className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg"
@@ -875,10 +751,13 @@ const AdminReports = () => {
                   <FileSpreadsheet size={14} className="text-blue-500" /> Export Excel
                 </button>
                 <button 
-                  onClick={handlePrint}
+                  onClick={() => {
+                    const data = activeTab === 'users' ? filteredUsers : activeTab === 'houses' ? filteredHouses : activeTab === 'bookings' ? filteredTransactions : filteredComplaints;
+                    exportToCSV(data, `house_design_platform_${activeTab}_report`);
+                  }}
                   className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg"
                 >
-                  <Printer size={14} className="text-slate-500" /> Print PDF / View
+                  <FileText size={14} className="text-emerald-500" /> Export CSV
                 </button>
               </div>
             </div>
@@ -939,11 +818,11 @@ const AdminReports = () => {
       {activeTab === 'overview' && (
         <div className="space-y-10">
           
-          {/* 26 Top Statistics Cards */}
+          {/* Summary Cards */}
           <div>
-            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Top Statistical Indicators</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              
+            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Users</p>
                 <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(enrichedUsers.length).toLocaleString()}</h4>
@@ -957,113 +836,58 @@ const AdminReports = () => {
                 <h4 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{(fullStats.totalEngineers).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Admins</p>
-                <h4 className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">{(enrichedUsers.filter(u => u.role === 'admin').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Super Admins</p>
-                <h4 className="text-2xl font-black text-red-500 dark:text-red-400 mt-1">{(enrichedUsers.filter(u => u.role === 'superadmin').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Verified Engineers</p>
-                <h4 className="text-2xl font-black text-green-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && u.verification === 'verified').length).toLocaleString()}</h4>
-              </div>
-              
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending Engineers</p>
-                <h4 className="text-2xl font-black text-amber-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && u.verification === 'pending').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected Engineers</p>
-                <h4 className="text-2xl font-black text-rose-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && u.verification === 'rejected').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total House Designs</p>
                 <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(fullStats.totalDesigns).toLocaleString()}</h4>
               </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Approved Designs</p>
-                <h4 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{(enrichedHouses.filter(h => h.status === 'approved').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending Designs</p>
-                <h4 className="text-2xl font-black text-yellow-500 mt-1">{(enrichedHouses.filter(h => h.status === 'pending').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected Designs</p>
-                <h4 className="text-2xl font-black text-red-500 mt-1">{(enrichedHouses.filter(h => h.status === 'rejected').length).toLocaleString()}</h4>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Custom Requests</p>
-                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(customRequests.length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending Requests</p>
-                <h4 className="text-2xl font-black text-amber-500 mt-1">{(customRequests.filter(r => r.status === 'pending').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Accepted Requests</p>
-                <h4 className="text-2xl font-black text-indigo-500 mt-1">{(customRequests.filter(r => r.status === 'accepted').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected Requests</p>
-                <h4 className="text-2xl font-black text-red-500 mt-1">{(customRequests.filter(r => r.status === 'rejected').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Completed Requests</p>
-                <h4 className="text-2xl font-black text-emerald-500 mt-1">{(customRequests.filter(r => r.status === 'completed').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Messages</p>
-                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(reportData.allMessages?.length || 0).toLocaleString()}</h4>
-              </div>
-
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Complaints</p>
                 <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(filteredComplaints.length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Open Complaints</p>
-                <h4 className="text-2xl font-black text-red-500 mt-1">{(filteredComplaints.filter(c => c.status === 'pending').length).toLocaleString()}</h4>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending Engineer Approvals</p>
+                <h4 className="text-2xl font-black text-amber-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && !u.isApproved).length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Closed Complaints</p>
-                <h4 className="text-2xl font-black text-slate-400 mt-1">{(filteredComplaints.filter(c => c.status !== 'pending').length).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Consultations</p>
-                <h4 className="text-2xl font-black text-purple-600 mt-1">{(consultationsCount).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Bookings</p>
-                <h4 className="text-2xl font-black text-blue-600 mt-1">{(bookingsCount).toLocaleString()}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform font-black">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Active Today</p>
-                <h4 className="text-2xl font-black text-emerald-600 mt-1">{Math.ceil(enrichedUsers.length * 0.45)}</h4>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform col-span-2 md:col-span-1">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Active This Week</p>
-                <h4 className="text-2xl font-black text-indigo-600 mt-1">{Math.ceil(enrichedUsers.length * 0.75)}</h4>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform col-span-2 md:col-span-1">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Active This Month</p>
-                <h4 className="text-2xl font-black text-purple-600 mt-1">{Math.ceil(enrichedUsers.length * 0.95)}</h4>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Approved Engineers</p>
+                <h4 className="text-2xl font-black text-green-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && u.isApproved).length).toLocaleString()}</h4>
               </div>
 
             </div>
           </div>
 
-          {/* 13 Interactive Charts panels */}
+          {/* Activity Feed - real registrations, uploads & messages within selected Date Range */}
           <div>
-            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Historical Growth & Distribution Dynamics</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* Monthly registrations growth line */}
+            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Activity Feed ({dateRange === 'all' ? 'All Time' : dateRange === '30days' ? 'Last 30 Days' : dateRange})</h3>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+              {activityFeed.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">No activity in this date range.</div>
+              ) : (
+                activityFeed.map((act, idx) => (
+                  <div key={idx} className="p-4 px-6 flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      act.type === 'registration' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600' :
+                      act.type === 'upload' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600' : 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
+                    }`}>
+                      {act.type === 'registration' ? <Users size={14} /> : act.type === 'upload' ? <Building size={14} /> : <MessageSquare size={14} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{act.text}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(act.date).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div>
+            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Trends</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+              {/* User Registration Trend */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">Monthly Registrations Growth</h4>
+                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">User Registration Trend</h4>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={formattedMonthlyReg}>
@@ -1079,9 +903,9 @@ const AdminReports = () => {
                 </div>
               </div>
 
-              {/* Monthly uploads bar chart */}
+              {/* House Upload Trend */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">Monthly House Design Uploads</h4>
+                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">House Upload Trend</h4>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={formattedHouseUploads}>
@@ -1095,177 +919,20 @@ const AdminReports = () => {
                 </div>
               </div>
 
-              {/* Interaction dynamics area chart */}
+              {/* Booking Trend */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">Monthly Custom Requests & Consultations</h4>
+                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">Booking Trend</h4>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockLineChartData}>
+                    <LineChart data={formattedBookingTrend}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
                       <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
                       <Tooltip />
-                      <Legend iconType="circle" wrapperStyle={{fontSize: 11}} />
-                      <Area type="monotone" dataKey="Requests" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.1} strokeWidth={2.5} />
-                      <Area type="monotone" dataKey="Consultations" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.05} strokeWidth={2.5} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Monthly messages & complaints */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-sm">
-                <h4 className="text-sm font-black text-slate-800 dark:text-white mb-4">Monthly Platform Activity (Messages & Complaints)</h4>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mockLineChartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                      <Tooltip />
-                      <Legend iconType="circle" wrapperStyle={{fontSize: 11}} />
-                      <Line type="monotone" dataKey="Messages" stroke="#06b6d4" strokeWidth={3} />
-                      <Line type="monotone" dataKey="Complaints" stroke="#ef4444" strokeWidth={2.5} />
+                      <Line type="monotone" dataKey="Bookings" stroke="#8b5cf6" strokeWidth={3} activeDot={{ r: 6 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-
-              {/* Distributions grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:col-span-2">
-                
-                {/* Property Type Pie */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm flex flex-col justify-between">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-2">Property Type Distribution</h4>
-                  <div className="h-44">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={propertyTypeDist} innerRadius={45} outerRadius={60} paddingAngle={3} dataKey="value">
-                          {propertyTypeDist.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {propertyTypeDist.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: COLORS[idx % COLORS.length]}}></span>
-                          <span>{p.name}</span>
-                        </div>
-                        <span>{p.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* House Style Pie */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm flex flex-col justify-between">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-2">House Style Distribution</h4>
-                  <div className="h-44">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={houseStyleDist} innerRadius={45} outerRadius={60} paddingAngle={3} dataKey="value">
-                          {houseStyleDist.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {houseStyleDist.map((s, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: COLORS[(idx + 3) % COLORS.length]}}></span>
-                          <span>{s.name}</span>
-                        </div>
-                        <span>{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Budget Range Bar */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm flex flex-col justify-between">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-2">Budget distribution</h4>
-                  <div className="h-44">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={budgetDist}>
-                        <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 8}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 8}} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-2 text-[10px] text-slate-500 text-center font-bold">
-                    Overview of user uploads by cost brackets
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Leaderboards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:col-span-2">
-                
-                {/* Top Engineers */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-1">
-                    <Star size={14} className="text-amber-500 fill-current" /> Top Ranked Engineers
-                  </h4>
-                  <div className="space-y-4">
-                    {topEngineers.map((eng, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-400">#{idx + 1}</span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{eng.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full">{eng.uploads} uploads</span>
-                          <span className="text-xs font-black text-amber-500">★ {eng.rating.toFixed(1)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top Clients */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-1">
-                    <Users size={14} className="text-indigo-500" /> Top Client Activity
-                  </h4>
-                  <div className="space-y-4">
-                    {topClients.map((cli, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-400">#{idx + 1}</span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{cli.name}</span>
-                        </div>
-                        <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2.5 py-0.5 rounded-full">{cli.requests} requests</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Most Viewed Houses */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-1">
-                    <Eye size={14} className="text-blue-500" /> Most Viewed House Designs
-                  </h4>
-                  <div className="space-y-4">
-                    {mostViewedHouses.map((h, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-xs font-black text-slate-400">#{idx + 1}</span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate" title={h.title}>{h.title}</span>
-                        </div>
-                        <span className="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold px-2.5 py-0.5 rounded-full shrink-0">{h.views} views</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
               </div>
 
             </div>
@@ -1400,15 +1067,14 @@ const AdminReports = () => {
                       {userVisibleColumns.email && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('email')}>Email</th>}
                       {userVisibleColumns.role && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('role')}>Role</th>}
                       {userVisibleColumns.status && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('status')}>Status</th>}
-                      {userVisibleColumns.country && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('country')}>Location</th>}
                       {userVisibleColumns.date && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('createdAt')}>Joined</th>}
                       {userVisibleColumns.actions && <th className="px-6 py-4.5 text-right">Actions</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-slate-500">No matching users found.</td>
+                        <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500">No matching users found.</td>
                       </tr>
                     ) : (
                       paginate(filteredUsers).map((user, idx) => (
@@ -1435,7 +1101,6 @@ const AdminReports = () => {
                           {userVisibleColumns.name && (
                             <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm">
                               {user.name}
-                              <p className="text-[10px] text-slate-400 font-semibold">{user.username}</p>
                             </td>
                           )}
                           {userVisibleColumns.email && <td className="px-6 py-4 text-xs font-semibold text-slate-500">{user.email}</td>}
@@ -1459,7 +1124,6 @@ const AdminReports = () => {
                               </span>
                             </td>
                           )}
-                          {userVisibleColumns.country && <td className="px-6 py-4 text-xs font-medium text-slate-500">{user.country}, {user.city}</td>}
                           {userVisibleColumns.date && <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{new Date(user.createdAt).toLocaleDateString()}</td>}
                           {userVisibleColumns.actions && (
                             <td className="px-6 py-4 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
@@ -1494,16 +1158,14 @@ const AdminReports = () => {
                       {houseVisibleColumns.engineer && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('engineer.name')}>Engineer</th>}
                       {houseVisibleColumns.type && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('houseType')}>Type</th>}
                       {houseVisibleColumns.price && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('price')}>Price</th>}
-                      {houseVisibleColumns.specs && <th className="px-6 py-4.5">Specs</th>}
-                      {houseVisibleColumns.stats && <th className="px-6 py-4.5">Views/Likes</th>}
                       {houseVisibleColumns.status && <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('status')}>Status</th>}
                       {houseVisibleColumns.actions && <th className="px-6 py-4.5 text-right">Actions</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredHouses.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="p-8 text-center text-slate-400 dark:text-slate-500">No matching house designs found.</td>
+                        <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500">No matching house designs found.</td>
                       </tr>
                     ) : (
                       paginate(filteredHouses).map((house) => (
@@ -1532,22 +1194,11 @@ const AdminReports = () => {
                           {houseVisibleColumns.title && (
                             <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm truncate max-w-[150px]">
                               {house.title}
-                              <p className="text-[10px] text-slate-400 font-semibold">{house.style}</p>
                             </td>
                           )}
                           {houseVisibleColumns.engineer && <td className="px-6 py-4 text-xs font-semibold text-slate-500">{house.engineer?.name || 'Unknown'}</td>}
-                          {houseVisibleColumns.type && <td className="px-6 py-4 text-xs font-medium text-slate-500">{house.houseType}</td>}
+                          {houseVisibleColumns.type && <td className="px-6 py-4 text-xs font-medium text-slate-500">{formatHouseType(house.houseType)}</td>}
                           {houseVisibleColumns.price && <td className="px-6 py-4 text-xs font-bold text-slate-800 dark:text-white">${(house.price || 0).toLocaleString()}</td>}
-                          {houseVisibleColumns.specs && (
-                            <td className="px-6 py-4 text-xs text-slate-400 font-semibold">
-                              🛏️ {house.bedrooms} | 🛁 {house.bathrooms} | 📐 {house.area}m²
-                            </td>
-                          )}
-                          {houseVisibleColumns.stats && (
-                            <td className="px-6 py-4 text-xs text-slate-400 font-semibold">
-                              👁️ {100 + house.likes * 5} | ❤️ {house.likes} | 📥 {house.downloads}
-                            </td>
-                          )}
                           {houseVisibleColumns.status && (
                             <td className="px-6 py-4">
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
@@ -1581,76 +1232,35 @@ const AdminReports = () => {
                 </table>
               )}
 
-              {/* Custom Design Requests Directory Table */}
-              {activeTab === 'requests' && (
+              {/* Bookings (Transactions) Report Directory Table */}
+              {activeTab === 'bookings' && (
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200/50 dark:border-slate-800">
                     <tr>
-                      <th className="px-6 py-4.5 w-12 text-center">
-                        <input 
-                          type="checkbox"
-                          checked={selectedRequestIds.length === filteredRequests.length && filteredRequests.length > 0}
-                          onChange={(e) => setSelectedRequestIds(e.target.checked ? filteredRequests.map(r => r._id) : [])}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        />
-                      </th>
-                      {requestVisibleColumns.id && <th className="px-6 py-4.5">Request ID</th>}
-                      {requestVisibleColumns.client && <th className="px-6 py-4.5">Client</th>}
-                      {requestVisibleColumns.engineer && <th className="px-6 py-4.5">Engineer</th>}
-                      {requestVisibleColumns.budget && <th className="px-6 py-4.5">Budget</th>}
-                      {requestVisibleColumns.deadline && <th className="px-6 py-4.5">Deadline</th>}
-                      {requestVisibleColumns.status && <th className="px-6 py-4.5">Status</th>}
-                      {requestVisibleColumns.date && <th className="px-6 py-4.5">Created</th>}
-                      {requestVisibleColumns.actions && <th className="px-6 py-4.5 text-right">Actions</th>}
+                      <th className="px-6 py-4.5">Design</th>
+                      <th className="px-6 py-4.5">Buyer</th>
+                      <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('amountPaid')}>Amount Paid</th>
+                      <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('commissionAmount')}>Commission</th>
+                      <th className="px-6 py-4.5">Status</th>
+                      <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('createdAt')}>Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                    {filteredRequests.length === 0 ? (
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-slate-500">No custom design requests found.</td>
+                        <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">No payments found.</td>
                       </tr>
                     ) : (
-                      paginate(filteredRequests).map((request) => (
-                        <tr 
-                          key={request._id} 
-                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all cursor-pointer"
-                          onClick={() => setSelectedRequestReport(request)}
-                        >
-                          <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              type="checkbox"
-                              checked={selectedRequestIds.includes(request._id)}
-                              onChange={(e) => setSelectedRequestIds(e.target.checked ? [...selectedRequestIds, request._id] : selectedRequestIds.filter(id => id !== request._id))}
-                              className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                            />
+                      paginate(filteredTransactions).map((t) => (
+                        <tr key={t._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                          <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm truncate max-w-[180px]">{t.design?.title || 'Deleted design'}</td>
+                          <td className="px-6 py-4 text-xs font-semibold text-slate-500">{t.buyer?.name || 'Unknown'}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-slate-800 dark:text-white">${(t.amountPaid || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4 text-xs font-semibold text-slate-500">${(t.commissionAmount || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${t.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' : t.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.paymentStatus}</span>
                           </td>
-                          {requestVisibleColumns.id && <td className="px-6 py-4 font-black text-xs text-indigo-600">{request._id}</td>}
-                          {requestVisibleColumns.client && <td className="px-6 py-4 text-xs font-bold text-slate-700 dark:text-slate-300">{request.client?.name}</td>}
-                          {requestVisibleColumns.engineer && <td className="px-6 py-4 text-xs font-medium text-slate-500">{request.engineer?.name}</td>}
-                          {requestVisibleColumns.budget && <td className="px-6 py-4 text-xs font-bold text-slate-800 dark:text-white">${(request.budget || 0).toLocaleString()}</td>}
-                          {requestVisibleColumns.deadline && <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{new Date(request.deadline).toLocaleDateString()}</td>}
-                          {requestVisibleColumns.status && (
-                            <td className="px-6 py-4">
-                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                request.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                request.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
-                                request.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-105 text-amber-700 bg-amber-50'
-                              }`}>
-                                {request.status}
-                              </span>
-                            </td>
-                          )}
-                          {requestVisibleColumns.date && <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{new Date(request.createdAt).toLocaleDateString()}</td>}
-                          {requestVisibleColumns.actions && (
-                            <td className="px-6 py-4 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => setSelectedRequestReport(request)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg" title="View details"><Eye size={14} /></button>
-                              <button onClick={() => {
-                                if (window.confirm('Mark this request as completed?')) {
-                                  setCustomRequests(prev => prev.map(r => r._id === request._id ? { ...r, status: 'completed' } : r));
-                                }
-                              }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 rounded-lg" title="Mark complete"><Check size={14} /></button>
-                            </td>
-                          )}
+                          <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{new Date(t.createdAt).toLocaleDateString()}</td>
                         </tr>
                       ))
                     )}
@@ -1673,18 +1283,16 @@ const AdminReports = () => {
                       </th>
                       {complaintVisibleColumns.id && <th className="px-6 py-4.5">Complaint ID</th>}
                       {complaintVisibleColumns.complainant && <th className="px-6 py-4.5">Submitted By</th>}
-                      {complaintVisibleColumns.against && <th className="px-6 py-4.5">Against</th>}
                       {complaintVisibleColumns.category && <th className="px-6 py-4.5">Category</th>}
-                      {complaintVisibleColumns.priority && <th className="px-6 py-4.5">Priority</th>}
                       {complaintVisibleColumns.status && <th className="px-6 py-4.5">Status</th>}
                       {complaintVisibleColumns.date && <th className="px-6 py-4.5">Created</th>}
                       {complaintVisibleColumns.actions && <th className="px-6 py-4.5 text-right">Actions</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredComplaints.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-slate-500">No complaints reported.</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">No complaints reported.</td>
                       </tr>
                     ) : (
                       paginate(filteredComplaints).map((complaint) => (
@@ -1702,24 +1310,14 @@ const AdminReports = () => {
                             />
                           </td>
                           {complaintVisibleColumns.id && <td className="px-6 py-4 font-black text-xs text-rose-600 truncate max-w-[80px]">{complaint._id}</td>}
-                          {complaintVisibleColumns.complainant && <td className="px-6 py-4 text-xs font-bold text-slate-700 dark:text-slate-300">{complaint.complainant?.name || 'Unknown'}</td>}
-                          {complaintVisibleColumns.against && <td className="px-6 py-4 text-xs font-medium text-slate-500">{complaint.against?.name || 'Unknown'}</td>}
+                          {complaintVisibleColumns.complainant && <td className="px-6 py-4 text-xs font-bold text-slate-700 dark:text-slate-300">{complaint.sender?.name || 'Unknown'}</td>}
                           {complaintVisibleColumns.category && <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{complaint.category}</td>}
-                          {complaintVisibleColumns.priority && (
-                            <td className="px-6 py-4 text-xs font-black">
-                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                complaint.priority === 'high' ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-600'
-                              }`}>
-                                {complaint.priority || 'Medium'}
-                              </span>
-                            </td>
-                          )}
                           {complaintVisibleColumns.status && (
                             <td className="px-6 py-4">
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                complaint.status === 'pending' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                complaint.status === 'Pending' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                               }`}>
-                                {complaint.status === 'pending' ? 'Open' : 'Resolved'}
+                                {complaint.status === 'Pending' ? 'Open' : complaint.status}
                               </span>
                             </td>
                           )}
@@ -1727,13 +1325,13 @@ const AdminReports = () => {
                           {complaintVisibleColumns.actions && (
                             <td className="px-6 py-4 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => setSelectedComplaintReport(complaint)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg" title="View details"><Eye size={14} /></button>
-                              {complaint.status === 'pending' && (
+                              {complaint.status === 'Pending' && (
                                 <button onClick={async () => {
                                   if (!window.confirm('Resolve this complaint?')) return;
                                   try {
                                     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
                                     const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                                    await axios.put(`/api/complaints/${complaint._id}/resolve`, { resolution: 'Resolved by Admin reports module.' }, config);
+                                    await axios.put(`/api/complaints/${complaint._id}/status`, { status: 'Resolved' }, config);
                                     alert('Complaint resolved successfully!');
                                     fetchReports();
                                   } catch (e) {
@@ -1753,10 +1351,10 @@ const AdminReports = () => {
             </div>
 
             {/* Pagination Controls */}
-            {filteredUsers.length > 0 && (
+            {(activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'bookings' ? filteredTransactions.length : filteredComplaints.length) > 0 && (
               <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
                 <span className="text-xs font-semibold text-slate-500">
-                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'requests' ? filteredRequests.length : filteredComplaints.length)} of {activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'requests' ? filteredRequests.length : filteredComplaints.length} entries
+                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'bookings' ? filteredTransactions.length : filteredComplaints.length)} of {activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'bookings' ? filteredTransactions.length : filteredComplaints.length} entries
                 </span>
                 
                 <div className="flex items-center gap-1">
@@ -1769,7 +1367,7 @@ const AdminReports = () => {
                   </button>
                   <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-lg">{currentPage}</span>
                   <button 
-                    disabled={currentPage * pageSize >= (activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'requests' ? filteredRequests.length : filteredComplaints.length)}
+                    disabled={currentPage * pageSize >= (activeTab === 'users' ? filteredUsers.length : activeTab === 'houses' ? filteredHouses.length : activeTab === 'bookings' ? filteredTransactions.length : filteredComplaints.length)}
                     onClick={() => setCurrentPage(prev => prev + 1)}
                     className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 disabled:opacity-50 transition-colors"
                   >
@@ -1799,30 +1397,26 @@ const AdminReports = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               
               {/* Profile Card & Info */}
-              <div className="flex flex-col md:flex-row gap-6 bg-slate-50 dark:bg-slate-850 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col md:flex-row gap-6 bg-slate-50 dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="w-20 h-20 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-3xl font-bold uppercase shrink-0 mx-auto md:mx-0">
                   {selectedUserReport.name.charAt(0)}
                 </div>
                 <div className="space-y-1.5 text-center md:text-left flex-1 min-w-0">
                   <h3 className="text-xl font-black text-slate-800 dark:text-white truncate">{selectedUserReport.name}</h3>
-                  <p className="text-xs text-slate-400 font-semibold">{selectedUserReport.username} | Status: <span className="font-extrabold text-indigo-500 uppercase">{selectedUserReport.status}</span></p>
+                  <p className="text-xs text-slate-400 font-semibold">Status: <span className="font-extrabold text-indigo-500 uppercase">{selectedUserReport.status}</span></p>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 text-left">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-3 text-left">
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Email</p>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{selectedUserReport.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Phone</p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedUserReport.phone}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Role</p>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300 capitalize">{selectedUserReport.role}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Location</p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedUserReport.country}, {selectedUserReport.city}</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Registration Date</p>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date(selectedUserReport.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </div>
@@ -1832,69 +1426,86 @@ const AdminReports = () => {
               <div>
                 <h4 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-3">Activity Summary</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Total Logins</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedUserReport.totalLogins}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Messages Sent</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedUserReport.activity?.messagesSent}</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{(reportData.allMessages || []).filter(m => m.sender?._id === selectedUserReport._id).length}</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">House Views</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedUserReport.activity?.houseViews}</p>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Messages Received</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{(reportData.allMessages || []).filter(m => m.receiver?._id === selectedUserReport._id).length}</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Registration Date</p>
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-2">{new Date(selectedUserReport.createdAt).toLocaleDateString()}</p>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Favorites</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{(selectedUserReport.favorites || []).length}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Complaints Submitted</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{(reportData.allComplaints || []).filter(c => c.sender?._id === selectedUserReport._id).length}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Role-Specific details */}
-              {selectedUserReport.role === 'client' && (
-                <div className="bg-slate-50 dark:bg-slate-850 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 animate-fadeIn">
-                  <h4 className="text-xs uppercase font-black text-slate-800 dark:text-white tracking-wider flex items-center gap-1.5">
-                    <UserCheck size={16} className="text-emerald-500" /> Client Intelligence Metrics
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Requests Sent</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{customRequests.filter(r => r.client?._id === selectedUserReport._id).length || 2}</p>
+              {/* Related House Designs: engineer's uploads OR client's favorites */}
+              <div>
+                <h4 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-3">
+                  {selectedUserReport.role === 'engineer' ? 'Houses Uploaded' : 'Favorited Houses'}
+                </h4>
+                {(() => {
+                  const relatedHouses = selectedUserReport.role === 'engineer'
+                    ? enrichedHouses.filter(h => h.engineer?._id === selectedUserReport._id)
+                    : enrichedHouses.filter(h => (selectedUserReport.favorites || []).includes(h._id));
+                  return relatedHouses.length === 0 ? (
+                    <p className="text-xs text-slate-400 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">No houses found.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {relatedHouses.map(h => (
+                        <div key={h._id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[50%]">{h.title}</span>
+                          <span className="text-[10px] text-slate-400">{formatHouseType(h.houseType)}</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${h.status === 'approved' ? 'bg-green-100 text-green-700' : h.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{h.status}</span>
+                          <span className="text-[10px] font-bold text-slate-500">${(h.price || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Completed Requests</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{customRequests.filter(r => r.client?._id === selectedUserReport._id && r.status === 'completed').length || 1}</p>
+                  );
+                })()}
+              </div>
+
+              {/* Related Complaints filed by this user */}
+              <div>
+                <h4 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-3">Complaints Submitted</h4>
+                {(() => {
+                  const relatedComplaints = (reportData.allComplaints || []).filter(c => c.sender?._id === selectedUserReport._id);
+                  return relatedComplaints.length === 0 ? (
+                    <p className="text-xs text-slate-400 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">No complaints filed.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {relatedComplaints.map(c => (
+                        <div key={c._id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[50%]">{c.subject}</span>
+                          <span className="text-[10px] text-slate-400">{c.category}</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${c.status === 'Pending' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{c.status}</span>
+                          <span className="text-[10px] font-bold text-slate-500">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Consultations Held</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">4</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Complaints Submitted</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{(reportData.allComplaints || []).filter(c => c.complainant?._id === selectedUserReport._id).length}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  );
+                })()}
+              </div>
 
               {selectedUserReport.role === 'engineer' && (
-                <div className="bg-slate-50 dark:bg-slate-850 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 animate-fadeIn">
+                <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 animate-fadeIn">
                   <h4 className="text-xs uppercase font-black text-slate-800 dark:text-white tracking-wider flex items-center gap-1.5">
                     <FolderOpen size={16} className="text-indigo-500" /> Engineer Portfolio Performance
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Designs Uploaded</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{enrichedHouses.filter(h => h.engineer?._id === selectedUserReport._id).length || 3}</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white">{enrichedHouses.filter(h => h.engineer?._id === selectedUserReport._id).length}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Average Rating</p>
-                      <p className="text-sm font-black text-amber-500">★ {(selectedUserReport.walletBalance > 5000 ? 4.9 : 4.6).toFixed(1)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Clients Served</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{customRequests.filter(r => r.engineer?._id === selectedUserReport._id).length || 3}</p>
+                      <p className="text-sm font-black text-amber-500">{getEngineerAvgRating(selectedUserReport._id) !== null ? `★ ${getEngineerAvgRating(selectedUserReport._id).toFixed(1)}` : 'No ratings yet'}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Wallet balance</p>
@@ -1908,7 +1519,7 @@ const AdminReports = () => {
                   
                   {/* Selfie & Certificate verification photos if engineer */}
                   {selectedUserReport.role === 'engineer' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/50 dark:border-slate-850">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/50 dark:border-slate-800">
                       <div>
                         <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Selfie Photo</p>
                         {selectedUserReport.selfieUrl ? (
@@ -1989,7 +1600,7 @@ const AdminReports = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-xl font-black text-slate-800 dark:text-white">{selectedHouseReport.title}</h3>
-                    <p className="text-xs text-slate-400 font-semibold">{selectedHouseReport.houseType} | {selectedHouseReport.style} Style</p>
+                    <p className="text-xs text-slate-400 font-semibold">{formatHouseType(selectedHouseReport.houseType)}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2018,19 +1629,19 @@ const AdminReports = () => {
               <div>
                 <h4 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-3">Specifications Report</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Bedrooms</p>
                     <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedHouseReport.bedrooms}</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Bathrooms</p>
                     <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedHouseReport.bathrooms}</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Area Spec</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedHouseReport.area} m²</p>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Kitchens</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">{selectedHouseReport.kitchens}</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl text-center">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Parking Space</p>
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-2">{selectedHouseReport.parking}</p>
                   </div>
@@ -2076,59 +1687,6 @@ const AdminReports = () => {
         </div>
       )}
 
-      {/* REQUEST REPORT DETAIL MODAL */}
-      {selectedRequestReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-            
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h2 className="text-lg font-black text-slate-955 dark:text-white">Custom Request details</h2>
-              <button onClick={() => setSelectedRequestReport(null)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400"><X size={20} /></button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Request ID</p>
-                  <p className="text-sm font-black text-indigo-600">{selectedRequestReport._id}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Status</p>
-                  <p className="text-xs font-black uppercase text-indigo-500">{selectedRequestReport.status}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Client</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedRequestReport.client?.name}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Engineer</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedRequestReport.engineer?.name}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Budget Range</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">${(selectedRequestReport.budget || 0).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Deadline</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date(selectedRequestReport.deadline).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-              <button onClick={() => {
-                setCustomRequests(prev => prev.map(r => r._id === selectedRequestReport._id ? { ...r, status: 'completed' } : r));
-                setSelectedRequestReport(prev => ({ ...prev, status: 'completed' }));
-              }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold">Complete Request</button>
-              <button onClick={() => setSelectedRequestReport(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold">Close</button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
       {/* COMPLAINT REPORT DETAIL MODAL */}
       {selectedComplaintReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
@@ -2152,31 +1710,31 @@ const AdminReports = () => {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-bold text-slate-400">Submitted By</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedComplaintReport.complainant?.name || 'Unknown'}</p>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedComplaintReport.sender?.name || 'Unknown'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Against Partner</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedComplaintReport.against?.name || 'Unknown'}</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Subject</p>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedComplaintReport.subject}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase font-bold text-slate-400">Category & Issue Description</p>
                   <p className="text-xs font-black text-slate-800 dark:text-white mt-1">{selectedComplaintReport.category}</p>
-                  <p className="text-xs text-slate-500 mt-2 bg-slate-50 dark:bg-slate-850 p-4 rounded-xl border border-slate-100 dark:border-slate-800">{selectedComplaintReport.description}</p>
+                  <p className="text-xs text-slate-500 mt-2 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800">{selectedComplaintReport.description}</p>
                 </div>
               </div>
 
             </div>
 
             <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-              {selectedComplaintReport.status === 'pending' && (
+              {selectedComplaintReport.status === 'Pending' && (
                 <button onClick={async () => {
                   try {
                     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-                    await axios.put(`/api/complaints/${selectedComplaintReport._id}/resolve`, { resolution: 'Resolved by Admin report tools.' }, {
+                    await axios.put(`/api/complaints/${selectedComplaintReport._id}/status`, { status: 'Resolved' }, {
                       headers: { Authorization: `Bearer ${userInfo.token}` }
                     });
                     alert('Complaint resolved successfully!');
-                    setSelectedComplaintReport(prev => ({ ...prev, status: 'resolved' }));
+                    setSelectedComplaintReport(prev => ({ ...prev, status: 'Resolved' }));
                     fetchReports();
                   } catch (e) {
                     alert('Failed to resolve complaint');

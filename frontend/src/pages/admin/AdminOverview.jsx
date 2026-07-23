@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Users, UserCheck, User, FolderOpen, CheckCircle, XCircle, DollarSign, ShoppingBag, CreditCard } from 'lucide-react';
+import { Users, UserCheck, User, FolderOpen, CheckCircle, XCircle, DollarSign, ShoppingBag, CreditCard, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const AdminOverview = () => {
   const [stats, setStats] = useState({
@@ -15,27 +15,53 @@ const AdminOverview = () => {
     totalTransactions: 0
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        const config = {
-          headers: { Authorization: `Bearer ${userInfo.token}` }
-        };
-        const { data } = await axios.get('/api/admin/stats', config);
-        setStats(data.data);
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setLoading(false);
+  const fetchStats = useCallback(async ({ silent = false, retriesLeft = 2 } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const config = {
+        headers: { Authorization: `Bearer ${userInfo.token}` }
+      };
+      const { data } = await axios.get('/api/admin/stats', config);
+      setStats(data.data);
+      setError(null);
+    } catch (err) {
+      // The backend can take a moment to finish connecting to the database
+      // right after it starts up. Instead of silently leaving every card at
+      // "0", retry a couple of times before surfacing an error to the user.
+      if (retriesLeft > 0) {
+        setTimeout(() => fetchStats({ silent: true, retriesLeft: retriesLeft - 1 }), 1500);
+        return;
       }
-    };
-
-    fetchStats();
+      console.error('Error fetching stats:', err);
+      setError('Could not load dashboard data. Make sure the backend server is running.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   if (loading) return <div className="text-slate-500 animate-pulse">Loading dashboard data...</div>;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center gap-3 py-16 bg-white dark:bg-slate-800 rounded-2xl border border-red-100 dark:border-red-900/40">
+        <AlertTriangle className="text-red-500" size={32} />
+        <p className="text-slate-600 dark:text-slate-300 max-w-md">{error}</p>
+        <button
+          onClick={() => fetchStats()}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          <RefreshCw size={16} /> Retry
+        </button>
+      </div>
+    );
+  }
 
   const statCards = [
     { title: 'Total Users', value: stats.totalUsers, icon: <Users size={24} />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },

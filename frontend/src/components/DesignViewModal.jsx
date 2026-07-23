@@ -3,6 +3,7 @@ import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import ModelViewer from './ModelViewer';
 import PaymentModal from './client/PaymentModal';
+import { formatHouseType } from '../utils/houseType';
 
 const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const { user } = useContext(AuthContext);
@@ -229,7 +230,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                 <span className="text-[10px] text-slate-300 ml-2 font-normal">v1.5</span>
               </h2>
               <span className="inline-block mt-2 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg uppercase tracking-wider">
-                {design.houseType}
+                {formatHouseType(design.houseType)}
               </span>
             </div>
             <button 
@@ -289,6 +290,20 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                     </div>
                     <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{design.kitchens || 1}</p>
                   </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+                      <Layout size={14} />
+                      <span className="text-xs font-semibold uppercase tracking-tight">Living Room</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{design.livingRooms || 1}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+                      <Layout size={14} />
+                      <span className="text-xs font-semibold uppercase tracking-tight">Master Room</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{design.masterRooms || 0}</p>
+                  </div>
                 </>
               )}
               <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -312,7 +327,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
 
             {design.houseType === 'Apartment' && design.units && design.units.length > 0 && (
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Apartment Units</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Floor Units</h3>
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {design.units.map((unit, index) => (
                     <div key={index} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">

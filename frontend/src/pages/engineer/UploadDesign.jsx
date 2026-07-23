@@ -15,6 +15,8 @@ const UploadDesign = () => {
     rooms: '',
     bathrooms: '',
     kitchens: '',
+    livingRooms: '',
+    masterRooms: '',
     carParking: false,
     budgetEstimate: '',
     description: '',
@@ -146,6 +148,8 @@ const UploadDesign = () => {
     submitData.append('rooms', formData.houseType === 'Apartment' ? 0 : formData.rooms);
     submitData.append('bathrooms', formData.houseType === 'Apartment' ? 0 : formData.bathrooms);
     submitData.append('kitchens', formData.houseType === 'Apartment' ? 0 : formData.kitchens);
+    submitData.append('livingRooms', formData.houseType === 'Apartment' ? 0 : formData.livingRooms);
+    submitData.append('masterRooms', formData.houseType === 'Apartment' ? 0 : formData.masterRooms);
     submitData.append('carParking', formData.carParking);
     submitData.append('budgetEstimate', formData.budgetEstimate);
     submitData.append('description', formData.description);
@@ -197,7 +201,7 @@ const UploadDesign = () => {
       setMessage({ type: 'success', text: 'Design uploaded successfully! It is now pending admin approval.' });
       
       // Reset form
-      setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', carParking: false, budgetEstimate: '', description: '' });
+      setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', livingRooms: '', masterRooms: '', carParking: false, budgetEstimate: '', description: '' });
       setFiles({ model3D: null, images: null });
       setInteriorGallery([]);
       
@@ -269,9 +273,7 @@ const UploadDesign = () => {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">House Type</label>
               <select name="houseType" value={formData.houseType} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow">
                 <option value="Villa">Villa</option>
-                <option value="Apartment">Apartment</option>
-                <option value="Bungalow">Bungalow</option>
-                <option value="Mansion">Mansion</option>
+                <option value="Apartment">Floor</option>
                 <option value="Townhouse">Townhouse</option>
               </select>
             </div>
@@ -293,11 +295,21 @@ const UploadDesign = () => {
                   <input type="number" name="kitchens" required min="1" value={formData.kitchens} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 1" />
                 </div>
 
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Living Room</label>
+                  <input type="number" name="livingRooms" required min="1" value={formData.livingRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 1" />
+                </div>
+
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Master Room</label>
+                  <input type="number" name="masterRooms" required min="0" value={formData.masterRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 1" />
+                </div>
+
               </>
             ) : (
               <>
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of Floors</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of Apartment</label>
                   <input type="number" name="numberOfFloors" required min="1" value={formData.numberOfFloors} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 5" />
                 </div>
                 <div className="col-span-1 md:col-span-1">
@@ -403,7 +415,7 @@ const UploadDesign = () => {
         {/* Units Generation */}
         {formData.houseType === 'Apartment' && units.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">Apartment Units</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">Floor Units</h2>
             <div className="space-y-6">
               {units.map((unit, index) => (
                 <div key={index} className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -529,12 +541,9 @@ const UploadDesign = () => {
                             <option value="">Select Room</option>
                             <option value="Living Room">Living Room</option>
                             <option value="Kitchen">Kitchen</option>
-                            <option value="Dining Room">Dining Room</option>
                             <option value="Master Bedroom">Master Bedroom</option>
                             <option value="Bedroom">Bedroom</option>
                             <option value="Bathroom">Bathroom</option>
-                            <option value="Balcony">Balcony</option>
-                            <option value="Corridor">Corridor</option>
                           </select>
                         </div>
                         <div>

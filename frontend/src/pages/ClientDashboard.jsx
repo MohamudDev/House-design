@@ -6,6 +6,7 @@ import { LogOut, Home, Heart, MessageSquare, Search, Filter, Eye, Layout, Dollar
 import DesignViewModal from '../components/DesignViewModal';
 import ThemeToggle from '../components/ThemeToggle';
 import ClientNavbar from '../components/client/ClientNavbar';
+import { formatHouseType } from '../utils/houseType';
 
 const ClientDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -151,9 +152,7 @@ const ClientDashboard = () => {
               >
                 <option value="all">All Types</option>
                 <option value="villa">Villa</option>
-                <option value="apartment">Apartment</option>
-                <option value="mansion">Mansion</option>
-                <option value="bungalow">Bungalow</option>
+                <option value="apartment">Floor</option>
               </select>
             </div>
             <div>
@@ -225,7 +224,7 @@ const ClientDashboard = () => {
                   </div>
                   <div className="absolute bottom-5 left-5">
                     <span className="px-3 py-1.5 bg-indigo-600/90 backdrop-blur text-white text-xs font-bold rounded-xl shadow-lg">
-                      {design.houseType.toUpperCase()}
+                      {formatHouseType(design.houseType).toUpperCase()}
                     </span>
                   </div>
                 </div>

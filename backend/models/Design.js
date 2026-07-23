@@ -21,6 +21,14 @@ const designSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
+  livingRooms: {
+    type: Number,
+    default: 1
+  },
+  masterRooms: {
+    type: Number,
+    default: 0
+  },
   carParking: {
     type: Boolean,
     default: false

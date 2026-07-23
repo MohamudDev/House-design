@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Eye, EyeOff, Check, X, ShieldAlert } from 'lucide-react';
 import DesignViewModal from '../../components/DesignViewModal';
+import { formatHouseType } from '../../utils/houseType';
 
 const ManageDesigns = () => {
   const [designs, setDesigns] = useState([]);
@@ -115,7 +116,7 @@ const ManageDesigns = () => {
                       <span className="text-xs text-slate-500 dark:text-slate-400">{design.engineer?.email || 'N/A'}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-slate-600 dark:text-slate-300">{design.houseType}</td>
+                  <td className="p-4 text-slate-600 dark:text-slate-300">{formatHouseType(design.houseType)}</td>
                   <td className="p-4 text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-1 font-bold text-amber-500 text-sm">
                       ★ {design.ratings && design.ratings.length > 0 ? (design.ratings.reduce((acc, r) => acc + r.rating, 0) / design.ratings.length).toFixed(1) : '0.0'}

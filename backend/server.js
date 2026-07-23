@@ -6,9 +6,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 
-// Connect to Database
-connectDB();
-
 const app = express();
 const server = http.createServer(app);
 
@@ -99,7 +96,17 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5002;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Only start accepting HTTP traffic once MongoDB is actually connected.
+// Previously the server started listening immediately while connectDB()
+// ran in the background, so any request that hit the DB (e.g. the admin
+// dashboard stats) during the first few seconds after boot could time out
+// or fail, showing "0" for every value until the app was reloaded later.
+connectDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}).catch((error) => {
+  console.error('Failed to connect to MongoDB, server not started:', error.message);
+  process.exit(1);
 });
 // trigger nodemon restart

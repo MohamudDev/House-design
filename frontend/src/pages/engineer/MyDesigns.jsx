@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Eye, Edit, Trash2 } from 'lucide-react';
 import DesignViewModal from '../../components/DesignViewModal';
 import EditDesignModal from '../../components/engineer/EditDesignModal';
+import { formatHouseType } from '../../utils/houseType';
 
 const MyDesigns = () => {
   const [designs, setDesigns] = useState([]);
@@ -100,7 +101,7 @@ const MyDesigns = () => {
                         <span className="font-semibold text-slate-800 dark:text-white">{design.title}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300">{design.houseType}</td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300">{formatHouseType(design.houseType)}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300">{new Date(design.createdAt).toLocaleDateString()}</td>
                     <td className="p-4 text-slate-600 dark:text-slate-300">
                       <span className="flex items-center gap-1 font-bold text-amber-500 text-sm">

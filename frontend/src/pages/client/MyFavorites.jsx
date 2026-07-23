@@ -5,6 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { Heart, Search, Eye, Layout, DollarSign, ChevronLeft } from 'lucide-react';
 import DesignViewModal from '../../components/DesignViewModal';
 import ClientNavbar from '../../components/client/ClientNavbar';
+import { formatHouseType } from '../../utils/houseType';
 
 const MyFavorites = () => {
   const { user } = useContext(AuthContext);
@@ -149,7 +150,7 @@ const MyFavorites = () => {
                   </div>
                   <div className="absolute bottom-5 left-5">
                     <span className="px-3 py-1.5 bg-indigo-600/90 backdrop-blur text-white text-xs font-bold rounded-xl shadow-lg">
-                      {design.houseType.toUpperCase()}
+                      {formatHouseType(design.houseType).toUpperCase()}
                     </span>
                   </div>
                 </div>
