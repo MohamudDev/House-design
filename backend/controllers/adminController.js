@@ -3,6 +3,7 @@ const Design = require('../models/Design');
 const Transaction = require('../models/Transaction');
 const Complaint = require('../models/Complaint');
 const Withdrawal = require('../models/Withdrawal');
+const Message = require('../models/Message');
 
 // @desc    Get detailed reports
 // @route   GET /api/admin/reports

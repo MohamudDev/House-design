@@ -75,9 +75,23 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-3">
             <div className="relative mr-2" ref={popoverRef}>
               <button 
-                onClick={() => {
+                onClick={async () => {
                   setShowPopover(!showPopover);
-                  if (!showPopover) setHasOpenedPopover(true);
+                  if (!showPopover) {
+                    setHasOpenedPopover(true);
+                    if (unreadContacts.length > 0) {
+                      try {
+                        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+                        await Promise.all(unreadContacts.map(msg => 
+                          axios.put(`/api/contact/${msg._id}/read`, {}, config)
+                        ));
+                        setUnreadContacts([]);
+                      } catch (err) {
+                        console.error('Error marking contacts read', err);
+                      }
+                    }
+                  }
                 }}
                 className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors rounded-full relative"
               >
