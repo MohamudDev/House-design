@@ -1,0 +1,5 @@
+Store uploaded files on Cloudinary/Firebase/Supabase instead of local disk
+
+- uploadMiddleware now picks Supabase Storage, then Firebase Storage, then Cloudinary (in that priority order) based on which credentials are configured, falling back to the local disk only when none are set (local dev)
+- Add a shared getFileUrl() helper and use it everywhere a file URL was previously built manually as `/uploads/${file.filename}`, so all upload paths (designs, verification docs, chat attachments, complaint attachments) work the same regardless of storage backend
+- This fixes house design thumbnails permanently disappearing after backend redeploys, since files no longer live on Railway's local volume

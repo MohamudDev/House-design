@@ -1,4 +1,5 @@
 const Complaint = require('../models/Complaint');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // @desc    Submit a new complaint
 // @route   POST /api/complaints
@@ -9,7 +10,7 @@ exports.submitComplaint = async (req, res) => {
     
     let attachment = null;
     if (req.file) {
-      attachment = `/uploads/${req.file.filename}`;
+      attachment = getFileUrl(req.file);
     }
 
     const complaint = await Complaint.create({

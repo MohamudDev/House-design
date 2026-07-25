@@ -2,6 +2,7 @@ const Design = require('../models/Design');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Message = require('../models/Message');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // @desc    Upload new design
 // @route   POST /api/engineer/designs
@@ -11,9 +12,9 @@ exports.uploadDesign = async (req, res) => {
     const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
     // Process files
-    const images = req.files['images'] ? req.files['images'].map(file => `/uploads/${file.filename}`) : [];
-    const plan2D = req.files['plan2D'] ? `/uploads/${req.files['plan2D'][0].filename}` : null;
-    const model3D = req.files['model3D'] ? `/uploads/${req.files['model3D'][0].filename}` : null;
+    const images = req.files['images'] ? req.files['images'].map(file => getFileUrl(file)) : [];
+    const plan2D = req.files['plan2D'] ? getFileUrl(req.files['plan2D'][0]) : null;
+    const model3D = req.files['model3D'] ? getFileUrl(req.files['model3D'][0]) : null;
 
     let parsedUnits = [];
     if (units) {
@@ -44,7 +45,7 @@ exports.uploadDesign = async (req, res) => {
           // If item indicates it has a new file, we grab the next file from interiorFiles
           let imagePath = item.image; // fallback to whatever was sent
           if (item.hasNewFile && interiorFiles[fileIndex]) {
-            imagePath = `/uploads/${interiorFiles[fileIndex].filename}`;
+            imagePath = getFileUrl(interiorFiles[fileIndex]);
             fileIndex++;
           }
           return {
@@ -362,7 +363,7 @@ exports.updateDesign = async (req, res) => {
         updateData.interiorGallery = galleryData.map(item => {
           let imagePath = item.image; 
           if (item.hasNewFile && interiorFiles[fileIndex]) {
-            imagePath = `/uploads/${interiorFiles[fileIndex].filename}`;
+            imagePath = getFileUrl(interiorFiles[fileIndex]);
             fileIndex++;
           }
           return {
@@ -378,7 +379,7 @@ exports.updateDesign = async (req, res) => {
     }
 
     if (req.files && req.files['images']) {
-      updateData.images = req.files['images'].map(file => `/uploads/${file.filename}`);
+      updateData.images = req.files['images'].map(file => getFileUrl(file));
     }
 
     design = await Design.findByIdAndUpdate(

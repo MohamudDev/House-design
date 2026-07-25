@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -38,9 +39,9 @@ exports.register = async (req, res) => {
       if (!req.files || !req.files['nationalId'] || !req.files['certificate'] || !req.files['selfie']) {
         return res.status(400).json({ message: 'Engineers must upload National ID, Certificate, and Selfie Verification' });
       }
-      nationalIdUrl = `/uploads/${req.files['nationalId'][0].filename}`;
-      certificateUrl = `/uploads/${req.files['certificate'][0].filename}`;
-      selfieUrl = `/uploads/${req.files['selfie'][0].filename}`;
+      nationalIdUrl = getFileUrl(req.files['nationalId'][0]);
+      certificateUrl = getFileUrl(req.files['certificate'][0]);
+      selfieUrl = getFileUrl(req.files['selfie'][0]);
     }
 
     // Check if user exists

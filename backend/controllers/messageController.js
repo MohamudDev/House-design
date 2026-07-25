@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // @desc    Send a message
 // @route   POST /api/messages
@@ -27,7 +28,7 @@ const sendMessage = async (req, res) => {
     let attachmentType = null;
 
     if (req.file) {
-      attachmentUrl = `/uploads/${req.file.filename}`;
+      attachmentUrl = getFileUrl(req.file);
       if (req.file.mimetype.startsWith('video/')) {
         attachmentType = 'video';
       } else if (req.file.mimetype.startsWith('image/')) {
