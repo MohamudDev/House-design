@@ -48,8 +48,6 @@ const Landing = () => {
         navigate('/admin-dashboard', { replace: true });
       } else if (role === 'engineer') {
         navigate('/engineer-dashboard', { replace: true });
-      } else if (role === 'client') {
-        navigate('/client-dashboard', { replace: true });
       }
     }
   }, [user, navigate]);

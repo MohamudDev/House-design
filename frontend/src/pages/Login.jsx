@@ -26,7 +26,7 @@ const Login = () => {
       } else if (userRole === 'engineer') {
         navigate('/engineer-dashboard');
       } else if (userRole === 'client') {
-        navigate('/client-dashboard');
+        navigate('/');
       } else {
         navigate('/');
       }
