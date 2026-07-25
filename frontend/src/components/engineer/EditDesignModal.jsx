@@ -109,7 +109,7 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
               />
               {imagePreview && (
                 <div className="mt-4">
-                  <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-xl border border-slate-200 dark:border-slate-700" />
+                  <img src={imagePreview} alt="Preview" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-full h-48 object-cover rounded-xl border border-slate-200 dark:border-slate-700" />
                 </div>
               )}
             </div>

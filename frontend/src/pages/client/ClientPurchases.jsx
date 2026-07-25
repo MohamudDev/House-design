@@ -74,6 +74,7 @@ const ClientPurchases = () => {
                   <img 
                     src={tx.design.images[0]} 
                     alt={tx.design.title}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }}
                     className="w-full h-full object-cover"
                   />
                 ) : (

@@ -1185,7 +1185,7 @@ const AdminReports = () => {
                           {houseVisibleColumns.image && (
                             <td className="px-6 py-4">
                               {house.images && house.images.length > 0 ? (
-                                <img src={house.images[0]} alt="preview" className="w-12 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                                <img src={house.images[0]} alt="preview" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-12 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
                               ) : (
                                 <div className="w-12 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-[10px] text-slate-400 font-bold">No Image</div>
                               )}
@@ -1592,7 +1592,7 @@ const AdminReports = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   {selectedHouseReport.images && selectedHouseReport.images.length > 0 ? (
-                    <img src={selectedHouseReport.images[0]} alt="House" className="w-full h-48 object-cover rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm" />
+                    <img src={selectedHouseReport.images[0]} alt="House" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-full h-48 object-cover rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm" />
                   ) : (
                     <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 font-bold">No Image Available</div>
                   )}

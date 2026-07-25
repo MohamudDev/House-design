@@ -414,7 +414,7 @@ const EngineerReports = () => {
                     <tr key={d._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all cursor-pointer" onClick={() => setSelectedDesign(d)}>
                       <td className="px-6 py-4">
                         {d.images && d.images.length > 0 ? (
-                          <img src={d.images[0]} alt="preview" className="w-12 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                          <img src={d.images[0]} alt="preview" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-12 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
                         ) : (
                           <div className="w-12 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-[10px] text-slate-400 font-bold">No Image</div>
                         )}
@@ -534,7 +534,7 @@ const EngineerReports = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {selectedDesign.images && selectedDesign.images.length > 0 ? (
-                <img src={selectedDesign.images[0]} alt="House" className="w-full h-48 object-cover rounded-2xl border border-slate-200 dark:border-slate-800" />
+                <img src={selectedDesign.images[0]} alt="House" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x300?text=No+Thumbnail'; }} className="w-full h-48 object-cover rounded-2xl border border-slate-200 dark:border-slate-800" />
               ) : (
                 <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 font-bold">No Image Available</div>
               )}
