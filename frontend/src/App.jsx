@@ -33,7 +33,6 @@ import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
 import ClientCollaborations from './pages/client/ClientCollaborations';
-import InstallPWA from './components/InstallPWA';
 import ComplaintManager from './components/shared/ComplaintManager';
 import ManageComplaints from './pages/admin/ManageComplaints';
 import { useEffect } from 'react';
@@ -71,7 +70,6 @@ function App() {
     <AuthProvider>
       <SocketProvider>
         <Router>
-          <InstallPWA />
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
