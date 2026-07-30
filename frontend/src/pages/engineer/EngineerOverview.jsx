@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UploadCloud, CheckCircle, MessageSquare, DollarSign, Wallet, Building, Activity, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle, MessageSquare, DollarSign, Wallet, Building, Activity, TrendingUp, Clock, AlertCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EngineerOverview = () => {
@@ -61,6 +61,7 @@ const EngineerOverview = () => {
     { title: 'Total Uploaded', value: stats.totalDesigns || 0, icon: <UploadCloud size={24} />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
     { title: 'Active Properties', value: stats.activeProperties || 0, icon: <CheckCircle size={24} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
     { title: 'Pending Approval', value: stats.pendingDesigns || 0, icon: <Clock size={24} />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { title: 'Rejected Designs', value: stats.rejectedDesigns || 0, icon: <XCircle size={24} />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
     { title: 'Messages Received', value: stats.messagesReceived || 0, icon: <MessageSquare size={24} />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' }
   ];
 
@@ -73,7 +74,7 @@ const EngineerOverview = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {overviewCards.map((card, idx) => (
           <div key={idx} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 transition-transform hover:-translate-y-1">
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${card.bg} ${card.color}`}>
