@@ -2,7 +2,23 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
 import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star, Mic, Volume2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
+
+const EDIT_WINDOW_MS = 30 * 60 * 1000;
+
+const canEditMessage = (msg) => {
+  if (!msg?.createdAt) return false;
+  return Date.now() - new Date(msg.createdAt).getTime() <= EDIT_WINDOW_MS;
+};
+
+const formatMessageTime = (dateValue) => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  const time = format(date, 'h:mm a');
+  if (isToday(date)) return `Today · ${time}`;
+  if (isYesterday(date)) return `Yesterday · ${time}`;
+  return format(date, 'MMM d, yyyy · h:mm a');
+};
 
 const MessagesView = () => {
   const { user } = useContext(AuthContext);
@@ -237,6 +253,10 @@ const MessagesView = () => {
   };
 
   const handleStartEdit = (msg) => {
+    if (!canEditMessage(msg)) {
+      alert('Messages can only be edited within 30 minutes of sending');
+      return;
+    }
     setEditingMessageId(msg._id);
     setEditingText(msg.content);
   };
@@ -244,6 +264,13 @@ const MessagesView = () => {
   const handleSaveEdit = async (e, id) => {
     e.preventDefault();
     if (!editingText.trim()) return;
+
+    const original = messages.find((m) => m._id === id);
+    if (original && !canEditMessage(original)) {
+      alert('Messages can only be edited within 30 minutes of sending');
+      setEditingMessageId(null);
+      return;
+    }
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${id}`, {
@@ -259,9 +286,13 @@ const MessagesView = () => {
         setMessages(prev => prev.map(m => m._id === id ? data.message : m));
         setEditingMessageId(null);
         fetchInbox();
+      } else {
+        alert(data.message || 'Failed to edit message');
+        if (res.status === 403) setEditingMessageId(null);
       }
     } catch (err) {
       console.error('Failed to edit message:', err);
+      alert('Failed to edit message');
     }
   };
 
@@ -505,11 +536,11 @@ const MessagesView = () => {
                           {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                           <div className={`text-[10px] mt-2 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'} flex items-center justify-end gap-1.5`}>
                             {msg.isEdited && <span className="italic opacity-75">(edited)</span>}
-                            <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
+                            <span>{formatMessageTime(msg.createdAt)}</span>
                           </div>
                           {isMe && (
                             <div className="flex gap-2 justify-end text-[10px] mt-1 text-indigo-200 opacity-60 hover:opacity-100 transition-opacity">
-                              {!msg.attachmentUrl && (
+                              {!msg.attachmentUrl && canEditMessage(msg) && (
                                 <button 
                                   onClick={() => handleStartEdit(msg)} 
                                   className="hover:underline hover:text-white"

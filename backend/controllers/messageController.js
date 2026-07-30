@@ -220,6 +220,14 @@ const editMessage = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to edit this message' });
     }
 
+    const EDIT_WINDOW_MS = 30 * 60 * 1000;
+    const ageMs = Date.now() - new Date(message.createdAt).getTime();
+    if (ageMs > EDIT_WINDOW_MS) {
+      return res.status(403).json({
+        message: 'Messages can only be edited within 30 minutes of sending'
+      });
+    }
+
     message.content = content;
     message.isEdited = true;
     await message.save();
