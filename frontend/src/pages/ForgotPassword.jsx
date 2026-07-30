@@ -13,6 +13,7 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showRegisterHint, setShowRegisterHint] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSendOtp = async (e) => {
@@ -20,12 +21,20 @@ const ForgotPassword = () => {
     setIsLoading(true);
     setError('');
     setSuccess('');
+    setShowRegisterHint(false);
     try {
       const { data } = await axios.post('/api/auth/forgot-password', { email: email.trim() }, { timeout: 45000 });
-      setSuccess(data.message || 'If an account with that email exists, a verification code has been sent. Check Spam too.');
+      setSuccess(data.message || 'A verification code has been sent to your email. Check Spam too.');
       setStep(2);
     } catch (err) {
-      setError(err.code === 'ECONNABORTED' ? 'Request timed out. Please try again.' : (err.response?.data?.message || 'Failed to send code.'));
+      if (err.code === 'ECONNABORTED') {
+        setError('Request timed out. Please try again.');
+      } else if (err.response?.data?.code === 'EMAIL_NOT_REGISTERED' || err.response?.status === 404) {
+        setError(err.response?.data?.message || 'This email is not registered. Please sign up first.');
+        setShowRegisterHint(true);
+      } else {
+        setError(err.response?.data?.message || 'Failed to send code.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +67,19 @@ const ForgotPassword = () => {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Forgot Password</h1>
           <p className="text-slate-500 dark:text-slate-400">{step === 1 ? 'Enter the email of your registered account' : `Enter the code sent to ${email}`}</p>
         </div>
-        {error && <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-center gap-3 text-red-600 border border-red-100"><AlertCircle size={20} /><p className="text-sm font-medium">{error}</p></div>}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 rounded-lg flex flex-col gap-2 text-red-600 border border-red-100">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="shrink-0" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            {showRegisterHint && (
+              <Link to="/register" className="ml-8 text-sm font-bold text-primary hover:underline">
+                Go to Sign Up / Register
+              </Link>
+            )}
+          </div>
+        )}
         {success && <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-center gap-3 text-green-700 border border-green-100"><CheckCircle2 size={20} /><p className="text-sm font-medium">{success}</p></div>}
 
         {step === 1 && (

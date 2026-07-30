@@ -162,11 +162,13 @@ exports.forgotPassword = async (req, res) => {
       email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
     });
 
-    const genericMessage = 'If an account with that email exists, a verification code has been sent. Check your inbox and Spam folder.';
-
     if (!user) {
       console.log('Forgot password: no user found for', normalizedEmail);
-      return res.json({ success: true, message: genericMessage });
+      return res.status(404).json({
+        success: false,
+        code: 'EMAIL_NOT_REGISTERED',
+        message: 'This email is not registered. Please sign up first.'
+      });
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -202,7 +204,10 @@ exports.forgotPassword = async (req, res) => {
       return res.status(500).json({ message: 'Email could not be sent. Please try again later.' });
     }
 
-    res.json({ success: true, message: genericMessage });
+    res.json({
+      success: true,
+      message: 'A verification code has been sent to your email. Check your inbox and Spam folder.'
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
