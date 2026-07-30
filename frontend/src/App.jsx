@@ -39,19 +39,25 @@ import { useEffect } from 'react';
 
 const ClearCacheComponent = () => {
   useEffect(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
+    const clearAll = async () => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
         }
-      }).then(() => {
-        window.location.href = '/login';
-      });
-    } else {
-      window.location.href = '/login';
-    }
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+        }
+      } catch (err) {
+        console.error('Cache clear failed:', err);
+      } finally {
+        window.location.replace(`/login?v=${Date.now()}`);
+      }
+    };
+    clearAll();
   }, []);
 
   return (

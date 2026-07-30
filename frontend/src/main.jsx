@@ -8,11 +8,16 @@ import { registerSW } from 'virtual:pwa-register'
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    console.log('New content available, reloading PWA app...')
-    updateSW(true)
+    updateSW(true).then(() => {
+      window.location.reload();
+    });
   },
   onOfflineReady() {
-    console.log('PWA app ready to work offline')
+    console.log('PWA app ready to work offline');
+  },
+  onRegisteredSW(_swUrl, registration) {
+    registration?.update();
+    setInterval(() => registration?.update(), 60 * 1000);
   }
 })
 
