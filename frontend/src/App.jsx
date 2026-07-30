@@ -35,6 +35,7 @@ import ClientPurchases from './pages/client/ClientPurchases';
 import ClientCollaborations from './pages/client/ClientCollaborations';
 import ComplaintManager from './components/shared/ComplaintManager';
 import ManageComplaints from './pages/admin/ManageComplaints';
+import InstallPWA from './components/InstallPWA';
 import { useEffect } from 'react';
 
 const ClearCacheComponent = () => {
@@ -76,6 +77,7 @@ function App() {
     <AuthProvider>
       <SocketProvider>
         <Router>
+          <InstallPWA />
           <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
