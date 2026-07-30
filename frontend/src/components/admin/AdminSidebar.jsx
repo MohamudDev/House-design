@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign, X, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Users, FileImage, FileBarChart, Settings, LogOut, ShieldAlert, MessageSquare, DollarSign, X, AlertCircle, FolderKanban } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -14,6 +14,7 @@ const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
     { name: 'Reports', path: '/admin-dashboard/reports', icon: <FileBarChart size={20} /> },
     { name: 'Inbox', path: '/admin-dashboard/contacts', icon: <MessageSquare size={20} /> },
     { name: 'Complaints', path: '/admin-dashboard/complaints', icon: <AlertCircle size={20} /> },
+    { name: 'Collaboration Documentation', path: '/admin-dashboard/collaborations', icon: <FolderKanban size={20} /> },
     { name: 'Settings', path: '/admin-dashboard/settings', icon: <Settings size={20} /> },
   ];
 

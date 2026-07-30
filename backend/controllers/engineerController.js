@@ -11,6 +11,10 @@ exports.uploadDesign = async (req, res) => {
   try {
     const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
+    if (!rooms || Number(rooms) < 1) {
+      return res.status(400).json({ success: false, message: 'A design must have at least 1 room.' });
+    }
+
     // Process files
     const images = req.files['images'] ? req.files['images'].map(file => getFileUrl(file)) : [];
     const plan2D = req.files['plan2D'] ? getFileUrl(req.files['plan2D'][0]) : null;
@@ -299,7 +303,11 @@ exports.updateProfile = async (req, res) => {
 exports.updateDesign = async (req, res) => {
   try {
     const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
-    
+
+    if (rooms !== undefined && Number(rooms) < 1) {
+      return res.status(400).json({ success: false, message: 'A design must have at least 1 room.' });
+    }
+
     let design = await Design.findById(req.params.id);
     
     if (!design) {

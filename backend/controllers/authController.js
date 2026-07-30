@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { getFileUrl } = require('../middleware/uploadMiddleware');
+const sendEmail = require('../utils/sendEmail');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -140,6 +142,104 @@ exports.getMe = async (req, res) => {
       isApproved: user.isApproved,
       verificationStatus: user.verificationStatus,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Forgot password — send OTP code to email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Please provide an email address' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
+
+    const genericMessage = 'If an account with that email exists, a verification code has been sent. Check your inbox and Spam folder.';
+
+    if (!user) {
+      console.log('Forgot password: no user found for', normalizedEmail);
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.resetPasswordToken = crypto.createHash('sha256').update(otp).digest('hex');
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #0f172a;">
+        <h2 style="margin: 0 0 12px;">Password reset code</h2>
+        <p style="margin: 0 0 16px; color: #475569;">
+          Hi ${user.name || 'there'}, use this code to reset your House Design password:
+        </p>
+        <p style="margin: 0 0 20px; font-size: 32px; letter-spacing: 8px; font-weight: 700; color: #4f46e5;">
+          ${otp}
+        </p>
+        <p style="margin: 0 0 8px; color: #64748b; font-size: 14px;">This code expires in 10 minutes.</p>
+        <p style="margin: 0; color: #64748b; font-size: 13px;">If you did not request this, you can ignore this email.</p>
+      </div>
+    `;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your House Design password reset code',
+        html
+      });
+    } catch (emailError) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      console.error('Forgot password email failed:', emailError.message);
+      return res.status(500).json({ message: 'Email could not be sent. Please try again later.' });
+    }
+
+    res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reset password with email + OTP
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, password } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and verification code are required' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const hashedOtp = crypto.createHash('sha256').update(String(otp).trim()).digest('hex');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      resetPasswordToken: hashedOtp,
+      resetPasswordExpire: { $gt: Date.now() }
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired code. Please request a new one.' });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully. You can now sign in.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

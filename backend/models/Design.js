@@ -11,7 +11,8 @@ const designSchema = new mongoose.Schema({
   },
   rooms: {
     type: Number,
-    required: [true, 'Please specify number of rooms']
+    required: [true, 'Please specify number of rooms'],
+    min: [1, 'A design must have at least 1 room']
   },
   bathrooms: {
     type: Number,

@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Contact from './pages/Contact';
 import Services from './pages/Services';
 import AdminDashboard from './pages/AdminDashboard';
@@ -16,6 +17,7 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminSettings from './pages/admin/AdminSettings';
 import ManageContacts from './pages/admin/ManageContacts';
 import ManageWithdrawals from './pages/admin/ManageWithdrawals';
+import AdminCollaborations from './pages/admin/AdminCollaborations';
 import ClientDashboard from './pages/ClientDashboard';
 import EngineerDashboard from './pages/EngineerDashboard';
 import EngineerOverview from './pages/engineer/EngineerOverview';
@@ -23,12 +25,14 @@ import EngineerReports from './pages/engineer/EngineerReports';
 import UploadDesign from './pages/engineer/UploadDesign';
 import MyDesigns from './pages/engineer/MyDesigns';
 import Availability from './pages/engineer/Availability';
+import EngineerCollaborations from './pages/engineer/EngineerCollaborations';
 import ProtectedRoute from './components/ProtectedRoute';
 import MessagesView from './components/MessagesView';
 import ClientNavbar from './components/client/ClientNavbar';
 import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
+import ClientCollaborations from './pages/client/ClientCollaborations';
 import InstallPWA from './components/InstallPWA';
 import ComplaintManager from './components/shared/ComplaintManager';
 import ManageComplaints from './pages/admin/ManageComplaints';
@@ -74,6 +78,7 @@ function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/contact" element={<Contact />} />
           
           <Route 
@@ -92,6 +97,7 @@ function App() {
             <Route path="withdrawals" element={<ManageWithdrawals />} />
             <Route path="contacts" element={<ManageContacts />} />
             <Route path="complaints" element={<ManageComplaints />} />
+            <Route path="collaborations" element={<AdminCollaborations />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
@@ -108,6 +114,7 @@ function App() {
             <Route path="upload" element={<UploadDesign />} />
             <Route path="designs" element={<MyDesigns />} />
             <Route path="messages" element={<div className="h-full p-2 md:p-6"><MessagesView /></div>} />
+            <Route path="collaborations" element={<EngineerCollaborations />} />
             <Route path="complaints" element={<div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6"><ComplaintManager /></div>} />
             <Route path="availability" element={<Availability />} />
           </Route>
@@ -177,6 +184,14 @@ function App() {
                     <ComplaintManager />
                   </div>
                 </div>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client-dashboard/collaborations"  
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <ClientCollaborations />
               </ProtectedRoute>
             } 
           />

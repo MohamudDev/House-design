@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { getFileUrl } = require('../middleware/uploadMiddleware');
+const { syncMessageToCollaboration } = require('../utils/collaborationSync');
 
 // @desc    Send a message
 // @route   POST /api/messages
@@ -59,6 +60,10 @@ const sendMessage = async (req, res) => {
     if (req.io) {
       req.io.to(receiverId.toString()).emit('new message', populatedMessage);
     }
+
+    setImmediate(() => {
+      syncMessageToCollaboration(populatedMessage, req.user.role);
+    });
 
     res.status(201).json({ success: true, message: populatedMessage });
   } catch (error) {
