@@ -204,3 +204,5 @@ function getFileUrl(file) {
 module.exports = upload;
 module.exports.getFileUrl = getFileUrl;
 module.exports.activeBackend = activeBackend;
+
+console.log(`[uploads] storage backend: ${activeBackend}`);

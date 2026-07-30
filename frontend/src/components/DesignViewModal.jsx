@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import ModelViewer from './ModelViewer';
 import PaymentModal from './client/PaymentModal';
 import { formatHouseType } from '../utils/houseType';
+import { resolveMediaInObject } from '../utils/mediaUrl';
 
 const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const { user } = useContext(AuthContext);
@@ -42,7 +43,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
         });
         if (res.ok) {
           const data = await res.json();
-          setCurrentDesign(data.data);
+          setCurrentDesign(resolveMediaInObject(data.data));
           if (data.data.ratings) {
             setRatingsList(data.data.ratings);
           }

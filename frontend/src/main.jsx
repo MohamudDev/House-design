@@ -16,23 +16,44 @@ const updateSW = registerSW({
   }
 })
 
-const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5004';
+const backendUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5004' : '');
 axios.defaults.baseURL = backendUrl;
+
+const UPLOAD_KEYS = new Set([
+  'images', 'model3D', 'plan2D', 'image', 'attachmentUrl', 'attachment',
+  'fileUrl', 'nationalIdUrl', 'certificateUrl', 'selfieUrl', 'url'
+]);
+
+function absolutizeUploadUrl(value) {
+  if (typeof value !== 'string' || !value.startsWith('/uploads')) return value;
+  if (!backendUrl) return value;
+  return backendUrl + value;
+}
 
 // Global interceptor to fix relative upload paths from backend
 axios.interceptors.response.use((response) => {
   const fixUrls = (obj) => {
     if (!obj) return;
     if (Array.isArray(obj)) {
-      obj.forEach(item => fixUrls(item));
-    } else if (typeof obj === 'object') {
-      if (obj.images && Array.isArray(obj.images)) {
-        obj.images = obj.images.map(img => img.startsWith('/uploads') ? backendUrl + img : img);
+      obj.forEach((item) => fixUrls(item));
+      return;
+    }
+    if (typeof obj !== 'object') return;
+
+    for (const [key, val] of Object.entries(obj)) {
+      if (UPLOAD_KEYS.has(key)) {
+        if (typeof val === 'string') {
+          obj[key] = absolutizeUploadUrl(val);
+        } else if (Array.isArray(val)) {
+          obj[key] = val.map((item) => {
+            if (typeof item === 'string') return absolutizeUploadUrl(item);
+            fixUrls(item);
+            return item;
+          });
+        }
+      } else if (val && typeof val === 'object') {
+        fixUrls(val);
       }
-      if (typeof obj.model3D === 'string' && obj.model3D.startsWith('/uploads')) {
-        obj.model3D = backendUrl + obj.model3D;
-      }
-      Object.values(obj).forEach(val => fixUrls(val));
     }
   };
   fixUrls(response.data);
