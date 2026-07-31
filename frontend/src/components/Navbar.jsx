@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Home, LogOut, User as UserIcon, Moon, Sun, Mail, CheckCircle2, Menu, X } from 'lucide-react';
+import { Home, LogOut, User as UserIcon, Moon, Sun, Mail, CheckCircle2, Menu, X, ShoppingCart } from 'lucide-react';
 import { useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -97,6 +97,7 @@ const Navbar = () => {
           <>
             <Link to="/client-dashboard" className="hover:text-white transition-colors">Marketplace</Link>
             <Link to="/client-dashboard/my-designs" className="hover:text-white transition-colors">My Design</Link>
+            <Link to="/client-dashboard/purchases" className="hover:text-white transition-colors">My Purchases</Link>
           </>
         )}
         {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
@@ -169,7 +170,16 @@ const Navbar = () => {
         )}
 
         {user ? (
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
+            {user.role === 'client' && (
+              <Link
+                to="/client-dashboard/purchases"
+                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
+              >
+                <ShoppingCart size={18} />
+                My Purchases
+              </Link>
+            )}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg text-white">
               <UserIcon size={18} />
               <span className="text-sm font-bold">{user.name.split(' ')[0]}</span>
@@ -183,7 +193,15 @@ const Navbar = () => {
             </button>
           </div>
         ) : (
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
+            <Link
+              to="/login"
+              className="flex items-center gap-2 text-white font-semibold hover:text-emerald-300 transition-colors border border-white/25 hover:border-emerald-400/50 px-4 py-2 rounded-lg"
+              title="Sign in to view your purchases"
+            >
+              <ShoppingCart size={18} />
+              My Purchases
+            </Link>
             <Link 
               to="/login" 
               className="text-white font-medium hover:text-white/80 transition-colors"
@@ -216,6 +234,7 @@ const Navbar = () => {
             <>
               <Link to="/client-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Marketplace</Link>
               <Link to="/client-dashboard/my-designs" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">My Design</Link>
+              <Link to="/client-dashboard/purchases" onClick={() => setIsMobileMenuOpen(false)} className="text-emerald-400 font-bold text-lg hover:text-emerald-300">My Purchases</Link>
             </>
           )}
           {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
@@ -232,6 +251,16 @@ const Navbar = () => {
           
           {user ? (
             <div className="flex flex-col items-center gap-4">
+              {user.role === 'client' && (
+                <Link
+                  to="/client-dashboard/purchases"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 w-full max-w-xs text-center rounded-xl"
+                >
+                  <ShoppingCart size={20} />
+                  My Purchases
+                </Link>
+              )}
               <div className="flex items-center gap-2 text-white">
                 <UserIcon size={20} />
                 <span className="font-bold">{user.name}</span>
@@ -245,6 +274,10 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 w-full px-10">
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 text-emerald-300 font-bold py-3 w-full text-center border border-emerald-400/40 rounded-xl">
+                <ShoppingCart size={18} />
+                My Purchases
+              </Link>
               <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold py-3 w-full text-center border border-white/20 rounded-xl">Log In</Link>
               <Link to="/register" onClick={() => setIsMobileMenuOpen(false)} className="bg-indigo-600 text-white font-bold py-3 w-full text-center rounded-xl">Sign Up</Link>
             </div>
