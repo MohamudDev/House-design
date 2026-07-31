@@ -4,7 +4,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
 const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
-  const { user, logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin-dashboard', icon: <LayoutDashboard size={20} />, exact: true },
@@ -17,10 +17,6 @@ const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
     { name: 'Collaboration Documentation', path: '/admin-dashboard/collaborations', icon: <FolderKanban size={20} /> },
     { name: 'Settings', path: '/admin-dashboard/settings', icon: <Settings size={20} /> },
   ];
-
-  if (user?.role === 'superadmin') {
-    navLinks.splice(1, 0, { name: 'Manage Admins', path: '/admin-dashboard/admins', icon: <ShieldAlert size={20} /> });
-  }
 
   return (
     <>

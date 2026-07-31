@@ -375,9 +375,13 @@ const ManageUsers = () => {
                 >
                   <option value="client" className="dark:bg-slate-800">Client</option>
                   <option value="engineer" className="dark:bg-slate-800">Engineer</option>
+                  <option value="admin" className="dark:bg-slate-800">Admin</option>
                 </select>
                 {formData.role === 'engineer' && (
                   <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Note: Engineers created by admins are automatically verified.</p>
+                )}
+                {formData.role === 'admin' && (
+                  <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">Note: This user will have admin dashboard access.</p>
                 )}
               </div>
               <div className="pt-4 flex gap-3">

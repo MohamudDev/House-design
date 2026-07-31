@@ -10,7 +10,6 @@ import Contact from './pages/Contact';
 import Services from './pages/Services';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOverview from './pages/admin/AdminOverview';
-import ManageAdmins from './pages/admin/ManageAdmins';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageDesigns from './pages/admin/ManageDesigns';
 import AdminReports from './pages/admin/AdminReports';
@@ -96,7 +95,6 @@ function App() {
             } 
           >
             <Route index element={<AdminOverview />} />
-            <Route path="admins" element={<ManageAdmins />} />
             <Route path="users" element={<ManageUsers />} />
             <Route path="designs" element={<ManageDesigns />} />
             <Route path="reports" element={<AdminReports />} />

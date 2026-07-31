@@ -327,7 +327,7 @@ exports.updateAdminSettings = async (req, res) => {
   }
 };
 
-// @desc    Create a new user (Client or Engineer)
+// @desc    Create a new user (Client, Engineer, or Admin)
 // @route   POST /api/admin/users
 // @access  Private/Admin
 exports.createUser = async (req, res) => {
@@ -338,8 +338,13 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
     
-    if (role !== 'client' && role !== 'engineer') {
-      return res.status(400).json({ message: 'Role must be client or engineer' });
+    const allowedRoles = ['client', 'engineer', 'admin'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: 'Role must be client, engineer, or admin' });
+    }
+
+    if (role === 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to create admin users' });
     }
 
     const userExists = await User.findOne({ email });
@@ -347,15 +352,22 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
     
-    const user = await User.create({
+    const userData = {
       name,
       email,
       password,
       role,
-      isApproved: role === 'engineer' ? true : undefined,
-      verificationStatus: role === 'engineer' ? 'verified' : undefined,
-      acceptedTerms: role === 'engineer' ? true : undefined
-    });
+    };
+
+    if (role === 'engineer') {
+      userData.isApproved = true;
+      userData.verificationStatus = 'verified';
+      userData.acceptedTerms = true;
+    } else if (role === 'admin') {
+      userData.isApproved = true;
+    }
+    
+    const user = await User.create(userData);
     
     res.status(201).json({ success: true, data: user });
   } catch (error) {
