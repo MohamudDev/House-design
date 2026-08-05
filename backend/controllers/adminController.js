@@ -67,12 +67,26 @@ exports.getAdminReports = async (req, res) => {
         { $match: { paymentStatus: 'completed' } },
         { $group: { _id: null, totalCommission: { $sum: "$commissionAmount" }, totalSales: { $sum: "$amountPaid" } } }
       ]),
-      // All Collections for advanced search, filter, and exports
-      User.find({}).select('-password').sort('-createdAt'),
-      Design.find({}).populate('engineer', 'name email').sort('-createdAt'),
-      Complaint.find({}).populate('sender', 'name email').sort('-createdAt'),
-      Transaction.find({}).populate('buyer', 'name email').populate('design', 'title price').sort('-createdAt'),
-      Message.find({}).populate('sender', 'name email').populate('receiver', 'name email').sort('-createdAt')
+      // Directory data for filters/exports (lean + limited messages for speed)
+      User.find({}).select('-password').sort('-createdAt').lean(),
+      Design.find({})
+        .select('-model3D -plan2D')
+        .populate('engineer', 'name email')
+        .sort('-createdAt')
+        .lean(),
+      Complaint.find({}).populate('sender', 'name email').sort('-createdAt').lean(),
+      Transaction.find({})
+        .populate('buyer', 'name email')
+        .populate('design', 'title price')
+        .sort('-createdAt')
+        .lean(),
+      Message.find({})
+        .select('sender receiver content createdAt designId isRead')
+        .populate('sender', 'name email')
+        .populate('receiver', 'name email')
+        .sort('-createdAt')
+        .limit(500)
+        .lean()
     ]);
 
     // Calculate derived stats
@@ -140,25 +154,34 @@ exports.resetUserPassword = async (req, res) => {
 // @access  Private/Admin
 exports.getAdminStats = async (req, res) => {
   try {
-    const usersCount = await User.countDocuments();
-    const engineersCount = await User.countDocuments({ role: 'engineer' });
-    const clientsCount = await User.countDocuments({ role: 'client' });
-    
-    const pendingDesigns = await Design.countDocuments({ status: 'pending' });
-    const approvedDesigns = await Design.countDocuments({ status: 'approved' });
-    const rejectedDesigns = await Design.countDocuments({ status: 'rejected' });
-
-    const transactions = await Transaction.aggregate([
-      { $match: { paymentStatus: 'completed' } },
-      { $group: { 
-          _id: null, 
-          totalCommission: { $sum: "$commissionAmount" },
-          totalSales: { $sum: "$amountPaid" },
-          totalTransactions: { $sum: 1 }
-        } 
-      }
+    const [
+      usersCount,
+      engineersCount,
+      clientsCount,
+      pendingDesigns,
+      approvedDesigns,
+      rejectedDesigns,
+      transactions
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'engineer' }),
+      User.countDocuments({ role: 'client' }),
+      Design.countDocuments({ status: 'pending' }),
+      Design.countDocuments({ status: 'approved' }),
+      Design.countDocuments({ status: 'rejected' }),
+      Transaction.aggregate([
+        { $match: { paymentStatus: 'completed' } },
+        {
+          $group: {
+            _id: null,
+            totalCommission: { $sum: '$commissionAmount' },
+            totalSales: { $sum: '$amountPaid' },
+            totalTransactions: { $sum: 1 }
+          }
+        }
+      ])
     ]);
-    
+
     const totalCommission = transactions.length > 0 ? transactions[0].totalCommission : 0;
     const totalSales = transactions.length > 0 ? transactions[0].totalSales : 0;
     const totalTransactions = transactions.length > 0 ? transactions[0].totalTransactions : 0;

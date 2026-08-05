@@ -59,7 +59,8 @@ const designSchema = new mongoose.Schema({
   },
   budgetEstimate: {
     type: Number,
-    required: [true, 'Please specify a budget estimate']
+    required: [true, 'Please specify a budget estimate'],
+    min: [0.01, 'Price must be at least $0.01']
   },
   location: {
     type: String,
@@ -79,7 +80,33 @@ const designSchema = new mongoose.Schema({
     livingRooms: Number,
     diningRooms: Number,
     balconies: Number,
-    area: Number,
+    length: Number, // m
+    width: Number,  // m
+    area: Number,   // m² (length × width)
+  }],
+  // Overall house footprint (meters) — Villa / Townhouse
+  houseLength: {
+    type: Number,
+    min: [0.01, 'House length must be greater than 0']
+  },
+  houseWidth: {
+    type: Number,
+    min: [0.01, 'House width must be greater than 0']
+  },
+  houseArea: {
+    type: Number // m² = houseLength × houseWidth
+  },
+  // Per-room dimensions including bathrooms (meters)
+  roomDimensions: [{
+    name: String,
+    type: {
+      type: String,
+      enum: ['bedroom', 'bathroom', 'kitchen', 'living', 'master', 'other'],
+      default: 'other'
+    },
+    length: Number,
+    width: Number,
+    area: Number
   }],
   price: {
     type: Number,
@@ -102,7 +129,10 @@ const designSchema = new mongoose.Schema({
     roomName: String,
     image: String,
     description: String,
-    order: Number
+    order: Number,
+    length: Number, // m
+    width: Number,  // m
+    area: Number    // m²
   }],
   engineer: {
     type: mongoose.Schema.Types.ObjectId,

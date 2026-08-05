@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Search, FolderKanban, Eye } from 'lucide-react';
 import ClientNavbar from '../../components/client/ClientNavbar';
+import ClientWorkspaceNav from '../../components/client/ClientWorkspaceNav';
 import CollaborationDetail from '../../components/collaboration/CollaborationDetail';
 
 const statusColor = {
@@ -34,8 +35,9 @@ const ClientCollaborations = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <ClientNavbar />
+      <ClientNavbar variant="workspace" />
       <div className="flex-1 max-w-7xl mx-auto w-full p-6 space-y-6">
+        <ClientWorkspaceNav />
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><FolderKanban className="text-indigo-600" /> My Collaborations</h1>
           <p className="text-slate-500 text-sm mt-1">Chats you started from house designs</p>

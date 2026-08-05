@@ -4,6 +4,75 @@ const Transaction = require('../models/Transaction');
 const Message = require('../models/Message');
 const { getFileUrl } = require('../middleware/uploadMiddleware');
 
+const ROOM_TYPES = new Set(['bedroom', 'bathroom', 'kitchen', 'living', 'master', 'other']);
+
+const roundArea = (length, width) => {
+  const l = Number(length);
+  const w = Number(width);
+  if (!l || !w || l <= 0 || w <= 0) return null;
+  return Math.round(l * w * 100) / 100;
+};
+
+const normalizeUnits = (units = []) =>
+  (Array.isArray(units) ? units : []).map((u) => {
+    const length = u.length !== undefined && u.length !== '' ? Number(u.length) : undefined;
+    const width = u.width !== undefined && u.width !== '' ? Number(u.width) : undefined;
+    const area = roundArea(length, width) ?? (u.area !== undefined && u.area !== '' ? Number(u.area) : undefined);
+    return {
+      unitName: u.unitName,
+      floorNumber: u.floorNumber,
+      length: length && length > 0 ? length : undefined,
+      width: width && width > 0 ? width : undefined,
+      area: area && area > 0 ? area : undefined
+    };
+  });
+
+const normalizeRoomDimensions = (rooms = []) =>
+  (Array.isArray(rooms) ? rooms : [])
+    .map((r) => {
+      const length = Number(r.length);
+      const width = Number(r.width);
+      const area = roundArea(length, width);
+      const type = ROOM_TYPES.has(r.type) ? r.type : 'other';
+      return {
+        name: (r.name || '').trim() || type.charAt(0).toUpperCase() + type.slice(1),
+        type,
+        length,
+        width,
+        area
+      };
+    })
+    .filter((r) => r.length > 0 && r.width > 0);
+
+const parseHouseDimensions = (body) => {
+  const houseLength = body.houseLength !== undefined && body.houseLength !== '' ? Number(body.houseLength) : undefined;
+  const houseWidth = body.houseWidth !== undefined && body.houseWidth !== '' ? Number(body.houseWidth) : undefined;
+  const houseArea = roundArea(houseLength, houseWidth);
+  return {
+    houseLength: houseLength && houseLength > 0 ? houseLength : undefined,
+    houseWidth: houseWidth && houseWidth > 0 ? houseWidth : undefined,
+    houseArea: houseArea || undefined
+  };
+};
+
+const validateDimensionsPayload = ({ houseType, houseLength, houseWidth, parsedUnits }) => {
+  const isApartment = houseType === 'Apartment';
+
+  if (!isApartment) {
+    if (!houseLength || !houseWidth) {
+      return 'Please enter house length and width (meters).';
+    }
+  } else if (parsedUnits && parsedUnits.length > 0) {
+    for (const u of parsedUnits) {
+      if (!u.length || !u.width || u.length <= 0 || u.width <= 0) {
+        return 'Each apartment unit must have length and width (meters).';
+      }
+    }
+  }
+
+  return null;
+};
+
 // @desc    Upload new design
 // @route   POST /api/engineer/designs
 // @access  Private/Engineer
@@ -11,8 +80,13 @@ exports.uploadDesign = async (req, res) => {
   try {
     const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
-    if (!rooms || Number(rooms) < 1) {
+    if (houseType !== 'Apartment' && (!rooms || Number(rooms) < 1)) {
       return res.status(400).json({ success: false, message: 'A design must have at least 1 room.' });
+    }
+
+    const amount = Number(price || budgetEstimate);
+    if (!amount || amount < 0.01) {
+      return res.status(400).json({ success: false, message: 'Price must be at least $0.01.' });
     }
 
     // Process files
@@ -23,7 +97,7 @@ exports.uploadDesign = async (req, res) => {
     let parsedUnits = [];
     if (units) {
       try {
-        parsedUnits = JSON.parse(units);
+        parsedUnits = normalizeUnits(JSON.parse(units));
       } catch (e) {
         parsedUnits = [];
       }
@@ -36,6 +110,27 @@ exports.uploadDesign = async (req, res) => {
       } catch (e) {
         parsedVehicleType = [];
       }
+    }
+
+    let roomDimensions = [];
+    if (req.body.roomDimensions) {
+      try {
+        roomDimensions = normalizeRoomDimensions(JSON.parse(req.body.roomDimensions));
+      } catch (e) {
+        roomDimensions = [];
+      }
+    }
+
+    const { houseLength, houseWidth, houseArea } = parseHouseDimensions(req.body);
+
+    const dimError = validateDimensionsPayload({
+      houseType,
+      houseLength,
+      houseWidth,
+      parsedUnits
+    });
+    if (dimError) {
+      return res.status(400).json({ success: false, message: dimError });
     }
 
     let interiorGallery = [];
@@ -56,6 +151,9 @@ exports.uploadDesign = async (req, res) => {
             roomName: item.roomName,
             description: item.description,
             order: item.order,
+            length: item.length ? Number(item.length) : undefined,
+            width: item.width ? Number(item.width) : undefined,
+            area: roundArea(item.length, item.width) || undefined,
             image: imagePath
           };
         }).filter(item => item.image); // Only keep items with an image
@@ -67,7 +165,7 @@ exports.uploadDesign = async (req, res) => {
     const design = await Design.create({
       title,
       houseType,
-      rooms,
+      rooms: houseType === 'Apartment' ? Math.max(1, Number(rooms) || 1) : rooms,
       bathrooms: bathrooms || 1,
       kitchens: kitchens || 1,
       livingRooms: livingRooms !== undefined ? livingRooms : 1,
@@ -87,6 +185,10 @@ exports.uploadDesign = async (req, res) => {
       numberOfFloors,
       totalUnits,
       units: parsedUnits,
+      houseLength,
+      houseWidth,
+      houseArea,
+      roomDimensions,
       images,
       plan2D,
       model3D,
@@ -123,47 +225,94 @@ exports.getMyDesigns = async (req, res) => {
 // @access  Private/Engineer
 exports.getEngineerStats = async (req, res) => {
   try {
-    const designs = await Design.find({ engineer: req.user.id });
-    
-    const totalDesigns = designs.length;
-    const pendingDesigns = designs.filter(d => d.status === 'pending').length;
-    const approvedDesigns = designs.filter(d => d.status === 'approved').length;
-    const rejectedDesigns = designs.filter(d => d.status === 'rejected').length;
-    
-    // Property Reports
-    const activeProperties = approvedDesigns;
-    
-    const transactions = await Transaction.aggregate([
-      { $match: { engineer: req.user._id, paymentStatus: 'completed' } },
-      { $group: { _id: "$design" } }
+    const engineerId = req.user._id;
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(`${currentYear}-01-01`);
+
+    const designs = await Design.find({ engineer: engineerId })
+      .select('-model3D -plan2D')
+      .sort('-createdAt')
+      .lean();
+    const designIds = designs.map((d) => d._id);
+
+    const [
+      soldDesignAgg,
+      earningsAgg,
+      messages,
+      recentSalesTransactions,
+      user,
+      myTransactions,
+      myMessages,
+      designGrowth,
+      bookingGrowth,
+      earningsGrowth,
+      messagesPerDesign
+    ] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { engineer: engineerId, paymentStatus: 'completed' } },
+        { $group: { _id: '$design' } }
+      ]),
+      Transaction.aggregate([
+        { $match: { engineer: engineerId, paymentStatus: 'completed' } },
+        { $group: { _id: null, totalEarnings: { $sum: '$engineerAmount' } } }
+      ]),
+      Message.find({ receiver: engineerId }).select('content isRead createdAt designId').lean(),
+      Transaction.find({ engineer: engineerId, paymentStatus: 'completed' })
+        .sort('-createdAt')
+        .limit(5)
+        .populate('design', 'title')
+        .lean(),
+      User.findById(engineerId).select('walletBalance').lean(),
+      Transaction.find({ engineer: engineerId })
+        .populate('buyer', 'name email')
+        .populate('design', 'title houseType price')
+        .sort('-createdAt')
+        .lean(),
+      Message.find({ receiver: engineerId })
+        .populate('sender', 'name email')
+        .populate('designId', 'title')
+        .sort('-createdAt')
+        .limit(100)
+        .lean(),
+      Design.aggregate([
+        { $match: { engineer: engineerId, createdAt: { $gte: yearStart } } },
+        { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { engineer: engineerId, paymentStatus: 'completed', createdAt: { $gte: yearStart } } },
+        { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { engineer: engineerId, paymentStatus: 'completed', createdAt: { $gte: yearStart } } },
+        { $group: { _id: { $month: '$createdAt' }, total: { $sum: '$engineerAmount' } } }
+      ]),
+      designIds.length
+        ? Message.aggregate([
+            { $match: { designId: { $in: designIds } } },
+            { $group: { _id: '$designId', count: { $sum: 1 } } }
+          ])
+        : Promise.resolve([])
     ]);
-    const soldDesignIds = transactions.map(t => t._id.toString());
-    
+
+    const totalDesigns = designs.length;
+    const pendingDesigns = designs.filter((d) => d.status === 'pending').length;
+    const approvedDesigns = designs.filter((d) => d.status === 'approved').length;
+    const rejectedDesigns = designs.filter((d) => d.status === 'rejected').length;
+    const activeProperties = approvedDesigns;
+    const soldDesignIds = soldDesignAgg.map((t) => t._id.toString());
     const totalPropertiesSold = soldDesignIds.length;
     const totalUnsoldProperties = totalDesigns - totalPropertiesSold;
-
-    const allTransactions = await Transaction.aggregate([
-      { $match: { engineer: req.user._id, paymentStatus: 'completed' } },
-      { $group: { _id: null, totalEarnings: { $sum: "$engineerAmount" } } }
-    ]);
-    const totalEarnings = allTransactions.length > 0 ? allTransactions[0].totalEarnings : 0;
-
-    // Customer Communication Reports
-    const messages = await Message.find({ receiver: req.user._id });
+    const totalEarnings = earningsAgg.length > 0 ? earningsAgg[0].totalEarnings : 0;
     const messagesReceived = messages.length;
-    const totalPendingReplies = messages.filter(m => !m.isRead).length;
+    const totalPendingReplies = messages.filter((m) => !m.isRead).length;
     const totalMessagesReplied = messagesReceived - totalPendingReplies;
 
-    // Property Performance
-    const designIds = designs.map(d => d._id);
-    const messagesPerDesign = await Message.aggregate([
-      { $match: { designId: { $in: designIds } } },
-      { $group: { _id: "$designId", count: { $sum: 1 } } }
-    ]);
     const messagesMap = {};
-    messagesPerDesign.forEach(m => messagesMap[m._id] = m.count);
+    messagesPerDesign.forEach((m) => {
+      messagesMap[m._id] = m.count;
+    });
 
-    const propertyPerformance = designs.map(d => ({
+    const propertyPerformance = designs.map((d) => ({
       _id: d._id,
       title: d.title,
       views: d.views || 0,
@@ -172,70 +321,38 @@ exports.getEngineerStats = async (req, res) => {
       status: soldDesignIds.includes(d._id.toString()) ? 'Sold' : 'Unsold'
     }));
 
-    // Recent Activities
-    const recentUploads = [...designs].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map(d => ({ type: 'upload', title: d.title, date: d.createdAt }));
-    const recentMessages = [...messages].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map(m => ({ type: 'message', content: m.content, date: m.createdAt }));
-    
-    const recentSalesTransactions = await Transaction.find({ engineer: req.user._id, paymentStatus: 'completed' })
-      .sort('-createdAt').limit(5).populate('design', 'title');
-    const recentSales = recentSalesTransactions.map(t => ({ type: 'sale', title: t.design?.title, amount: t.engineerAmount, date: t.createdAt }));
-
+    const recentUploads = designs.slice(0, 5).map((d) => ({ type: 'upload', title: d.title, date: d.createdAt }));
+    const recentMessages = [...messages]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5)
+      .map((m) => ({ type: 'message', content: m.content, date: m.createdAt }));
+    const recentSales = recentSalesTransactions.map((t) => ({
+      type: 'sale',
+      title: t.design?.title,
+      amount: t.engineerAmount,
+      date: t.createdAt
+    }));
     const recentActivities = [...recentUploads, ...recentMessages, ...recentSales]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 10);
-
-    const user = await User.findById(req.user._id);
-    const walletBalance = user.walletBalance || 0;
-
-    const totalApartments = designs.filter(d => d.houseType === 'Apartment').length;
-
-    // Full booking history (completed + pending purchase transactions) for this engineer
-    const myTransactions = await Transaction.find({ engineer: req.user._id })
-      .populate('buyer', 'name email')
-      .populate('design', 'title houseType price')
-      .sort('-createdAt');
-
-    const totalBookings = myTransactions.filter(t => t.paymentStatus === 'completed').length;
-
-    // Client messages (closest real proxy for "client requests")
-    const myMessages = await Message.find({ receiver: req.user._id })
-      .populate('sender', 'name email')
-      .populate('designId', 'title')
-      .sort('-createdAt')
-      .limit(100);
-
-    // Monthly growth (current year) for charts
-    const currentYear = new Date().getFullYear();
-    const designGrowth = await Design.aggregate([
-      { $match: { engineer: req.user._id, createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
-      { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
-    ]);
-    const bookingGrowth = await Transaction.aggregate([
-      { $match: { engineer: req.user._id, paymentStatus: 'completed', createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
-      { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } }
-    ]);
-    const earningsGrowth = await Transaction.aggregate([
-      { $match: { engineer: req.user._id, paymentStatus: 'completed', createdAt: { $gte: new Date(`${currentYear}-01-01`) } } },
-      { $group: { _id: { $month: '$createdAt' }, total: { $sum: '$engineerAmount' } } }
-    ]);
 
     res.status(200).json({
       success: true,
       data: {
         totalDesigns,
-        totalApartments,
+        totalApartments: designs.filter((d) => d.houseType === 'Apartment').length,
         pendingDesigns,
         approvedDesigns,
         rejectedDesigns,
         activeProperties,
         totalPropertiesSold,
         totalUnsoldProperties,
-        totalBookings,
+        totalBookings: myTransactions.filter((t) => t.paymentStatus === 'completed').length,
         messagesReceived,
         totalMessagesReplied,
         totalPendingReplies,
         totalEarnings,
-        walletBalance,
+        walletBalance: user?.walletBalance || 0,
         propertyPerformance,
         recentActivities,
         myDesigns: designs,
@@ -304,8 +421,15 @@ exports.updateDesign = async (req, res) => {
   try {
     const { title, houseType, rooms, bathrooms, kitchens, livingRooms, masterRooms, carParking, budgetEstimate, price, description, location, numberOfFloors, totalUnits, units, parkingType, vehicleType, totalParkingSpaces, parkingLocation, reservedParking, visitorParking, parkingDescription } = req.body;
 
-    if (rooms !== undefined && Number(rooms) < 1) {
+    if (rooms !== undefined && houseType !== 'Apartment' && Number(rooms) < 1) {
       return res.status(400).json({ success: false, message: 'A design must have at least 1 room.' });
+    }
+
+    if (budgetEstimate !== undefined || price !== undefined) {
+      const amount = Number(price !== undefined ? price : budgetEstimate);
+      if (!amount || amount < 0.01) {
+        return res.status(400).json({ success: false, message: 'Price must be at least $0.01.' });
+      }
     }
 
     let design = await Design.findById(req.params.id);
@@ -321,7 +445,7 @@ exports.updateDesign = async (req, res) => {
     let parsedUnits = design.units;
     if (units) {
       try {
-        parsedUnits = JSON.parse(units);
+        parsedUnits = normalizeUnits(JSON.parse(units));
       } catch (e) {
         // keep existing units if parse fails or skip
       }
@@ -333,6 +457,34 @@ exports.updateDesign = async (req, res) => {
         parsedVehicleType = JSON.parse(vehicleType);
       } catch (e) {
         // keep existing
+      }
+    }
+
+    let roomDimensions = design.roomDimensions;
+    if (req.body.roomDimensions !== undefined) {
+      try {
+        roomDimensions = normalizeRoomDimensions(JSON.parse(req.body.roomDimensions));
+      } catch (e) {
+        // keep existing
+      }
+    }
+
+    const resolvedHouseType = houseType || design.houseType;
+    const houseDims = parseHouseDimensions({
+      houseLength: req.body.houseLength !== undefined ? req.body.houseLength : design.houseLength,
+      houseWidth: req.body.houseWidth !== undefined ? req.body.houseWidth : design.houseWidth
+    });
+
+    // Only enforce dimensions when engineer is actively sending dimension fields
+    if (req.body.houseLength !== undefined || req.body.houseWidth !== undefined || units) {
+      const dimError = validateDimensionsPayload({
+        houseType: resolvedHouseType,
+        houseLength: houseDims.houseLength,
+        houseWidth: houseDims.houseWidth,
+        parsedUnits
+      });
+      if (dimError) {
+        return res.status(400).json({ success: false, message: dimError });
       }
     }
 
@@ -362,6 +514,16 @@ exports.updateDesign = async (req, res) => {
       status: req.user.isApproved ? 'approved' : 'pending'
     };
 
+    if (req.body.houseLength !== undefined || req.body.houseWidth !== undefined) {
+      updateData.houseLength = houseDims.houseLength;
+      updateData.houseWidth = houseDims.houseWidth;
+      updateData.houseArea = houseDims.houseArea;
+    }
+
+    if (req.body.roomDimensions !== undefined) {
+      updateData.roomDimensions = roomDimensions;
+    }
+
     if (req.body.interiorGalleryData) {
       try {
         const galleryData = JSON.parse(req.body.interiorGalleryData);
@@ -378,6 +540,9 @@ exports.updateDesign = async (req, res) => {
             roomName: item.roomName,
             description: item.description,
             order: item.order,
+            length: item.length ? Number(item.length) : undefined,
+            width: item.width ? Number(item.width) : undefined,
+            area: roundArea(item.length, item.width) || undefined,
             image: imagePath
           };
         }).filter(item => item.image);

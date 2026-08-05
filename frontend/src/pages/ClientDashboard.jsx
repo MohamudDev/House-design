@@ -2,11 +2,12 @@ import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { LogOut, Home, Heart, MessageSquare, Search, Filter, Eye, Layout, DollarSign, ShoppingBag } from 'lucide-react';
+import { LogOut, Home, Heart, MessageSquare, Search, Filter, Eye, Layout, DollarSign, ShoppingBag, ClipboardList } from 'lucide-react';
 import DesignViewModal from '../components/DesignViewModal';
 import ThemeToggle from '../components/ThemeToggle';
 import ClientNavbar from '../components/client/ClientNavbar';
 import { formatHouseType } from '../utils/houseType';
+import { NOTIFICATIONS_UPDATED_EVENT } from '../components/NotificationCenter';
 
 const ClientDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -15,6 +16,7 @@ const ClientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDesign, setSelectedDesign] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [projectNotifCount, setProjectNotifCount] = useState(0);
   
   // Favorites (just IDs for toggling)
   const [favorites, setFavorites] = useState([]);
@@ -26,6 +28,23 @@ const ClientDashboard = () => {
     minRooms: 1,
     maxBudget: 1000000
   });
+
+  useEffect(() => {
+    const loadNotifCount = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('userInfo') || '{}').token;
+        if (!token) return;
+        const { data } = await axios.get('/api/notifications', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setProjectNotifCount(data.unreadCount || 0);
+      } catch (_) {}
+    };
+    loadNotifCount();
+    const onUpdated = (e) => setProjectNotifCount(e.detail?.unreadCount ?? 0);
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, onUpdated);
+  }, []);
 
   useEffect(() => {
     const fetchDesigns = async () => {
@@ -125,10 +144,22 @@ const ClientDashboard = () => {
             </button>
             <button 
               onClick={() => navigate('/client-dashboard/purchases')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100 dark:shadow-emerald-900/20`}
+              className="flex items-center justify-center p-2.5 rounded-xl transition-all shadow-lg active:scale-95 bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100 dark:shadow-emerald-900/20"
+              title="My Purchases"
             >
               <ShoppingBag size={18} />
-              My Purchases
+            </button>
+            <button 
+              onClick={() => navigate('/client-dashboard/projects')}
+              className="relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 bg-slate-800 text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 shadow-slate-100 dark:shadow-slate-900/20"
+            >
+              <ClipboardList size={18} />
+              My Projects
+              {projectNotifCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow">
+                  {projectNotifCount > 99 ? '99+' : projectNotifCount}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => navigate('/client-dashboard/favorites')}
@@ -265,13 +296,22 @@ const ClientDashboard = () => {
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{design.engineer?.name}</span>
                     </div>
                     
-                    <button 
-                      onClick={() => setSelectedDesign(design)}
-                      className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors group/btn"
-                    >
-                      View 3D
-                      <Eye size={18} className="group-hover/btn:scale-110 transition-transform" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/client-dashboard/customise/${design._id}`)}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                      >
+                        Customise
+                      </button>
+                      <button 
+                        onClick={() => setSelectedDesign(design)}
+                        className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors group/btn"
+                      >
+                        View 3D
+                        <Eye size={18} className="group-hover/btn:scale-110 transition-transform" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

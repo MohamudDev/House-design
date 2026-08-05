@@ -82,8 +82,11 @@ app.use('/api/client', require('./routes/clientRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/collaborations', require('./routes/collaborationRoutes'));
+app.use('/api/projects', require('./routes/projectRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/complaints', require('./routes/complaintRoutes'));
+app.use('/api/customizations', require('./routes/customizationRoutes'));
 
 app.get('/', (req, res) => {
   res.send('API is running...');

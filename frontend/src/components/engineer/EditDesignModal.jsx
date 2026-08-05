@@ -1,6 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import axios from 'axios';
-import { X, Save } from 'lucide-react';
+import { X, Save, Ruler } from 'lucide-react';
+
+const calcArea = (length, width) => {
+  const l = Number(length);
+  const w = Number(width);
+  if (!l || !w || l <= 0 || w <= 0) return '';
+  return Math.round(l * w * 100) / 100;
+};
 
 const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +18,8 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
     kitchens: design.kitchens || '',
     livingRooms: design.livingRooms || '',
     masterRooms: design.masterRooms || '',
+    houseLength: design.houseLength || '',
+    houseWidth: design.houseWidth || '',
     carParking: design.carParking || false,
     budgetEstimate: design.budgetEstimate || '',
     description: design.description || ''
@@ -20,6 +29,11 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
   const [imagePreview, setImagePreview] = useState(design.images && design.images.length > 0 ? `${design.images[0]}` : null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const houseArea = useMemo(
+    () => calcArea(formData.houseLength, formData.houseWidth),
+    [formData.houseLength, formData.houseWidth]
+  );
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -37,6 +51,14 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (formData.houseType !== 'Apartment') {
+      if (!formData.houseLength || !formData.houseWidth || Number(formData.houseLength) <= 0 || Number(formData.houseWidth) <= 0) {
+        setError('Please enter house length and width in meters.');
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -78,7 +100,7 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           {error && (
             <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-medium">
               {error}
@@ -162,6 +184,26 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Master Room</label>
                   <input type="number" name="masterRooms" required min="0" value={formData.masterRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" />
                 </div>
+
+                <div className="col-span-1 md:col-span-2">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                    <Ruler size={16} className="text-indigo-600" /> House Dimensions (meters)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Length (m)</label>
+                      <input type="number" name="houseLength" required min="0.01" step="0.01" value={formData.houseLength} onChange={handleInputChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Width (m)</label>
+                      <input type="number" name="houseWidth" required min="0.01" step="0.01" value={formData.houseWidth} onChange={handleInputChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Area (m²)</label>
+                      <input type="text" readOnly value={houseArea ? `${houseArea} m²` : '—'} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none" />
+                    </div>
+                  </div>
+                </div>
               </>
             )}
 
@@ -184,8 +226,8 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
                 type="number" 
                 name="budgetEstimate" 
                 required 
-                min="0" 
-                step="0.1"
+                min="0.01" 
+                step="0.01"
                 value={formData.budgetEstimate} 
                 onChange={handleInputChange} 
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 

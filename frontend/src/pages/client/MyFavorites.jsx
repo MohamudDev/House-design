@@ -186,13 +186,22 @@ const MyFavorites = () => {
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{design.engineer?.name}</span>
                     </div>
                     
-                    <button 
-                      onClick={() => setSelectedDesign(design)}
-                      className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors group/btn"
-                    >
-                      View 3D
-                      <Eye size={18} className="group-hover/btn:scale-110 transition-transform" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/client-dashboard/customise/${design._id}`)}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                      >
+                        Customise
+                      </button>
+                      <button 
+                        onClick={() => setSelectedDesign(design)}
+                        className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors group/btn"
+                      >
+                        View 3D
+                        <Eye size={18} className="group-hover/btn:scale-110 transition-transform" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

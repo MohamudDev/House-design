@@ -4,6 +4,7 @@ import { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { ShieldAlert, Menu } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import NotificationCenter from '../components/NotificationCenter';
 
 const EngineerDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -26,6 +27,7 @@ const EngineerDashboard = () => {
             <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Workspace</h2>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
+            <NotificationCenter />
             <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 mr-1 md:mr-2" />
             <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">Welcome back,</span>
             <span className="hidden sm:inline font-bold text-slate-900 dark:text-white">{user?.name}</span>

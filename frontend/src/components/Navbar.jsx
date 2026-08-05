@@ -97,7 +97,7 @@ const Navbar = () => {
           <>
             <Link to="/client-dashboard" className="hover:text-white transition-colors">Marketplace</Link>
             <Link to="/client-dashboard/my-designs" className="hover:text-white transition-colors">My Design</Link>
-            <Link to="/client-dashboard/purchases" className="hover:text-white transition-colors">My Purchases</Link>
+            <Link to="/client-dashboard/projects" className="hover:text-white transition-colors">My Projects</Link>
           </>
         )}
         {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
@@ -174,10 +174,10 @@ const Navbar = () => {
             {user.role === 'client' && (
               <Link
                 to="/client-dashboard/purchases"
-                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
+                className="flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-md transition-all shadow-md shadow-emerald-500/20 active:scale-95"
+                title="My Purchases"
               >
-                <ShoppingCart size={18} />
-                My Purchases
+                <ShoppingCart size={16} />
               </Link>
             )}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg text-white">
@@ -196,11 +196,10 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-3">
             <Link
               to="/login"
-              className="flex items-center gap-2 text-white font-semibold hover:text-emerald-300 transition-colors border border-white/25 hover:border-emerald-400/50 px-4 py-2 rounded-lg"
+              className="flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-md transition-all shadow-md shadow-emerald-500/20 active:scale-95"
               title="Sign in to view your purchases"
             >
-              <ShoppingCart size={18} />
-              My Purchases
+              <ShoppingCart size={16} />
             </Link>
             <Link 
               to="/login" 
@@ -234,7 +233,7 @@ const Navbar = () => {
             <>
               <Link to="/client-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">Marketplace</Link>
               <Link to="/client-dashboard/my-designs" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">My Design</Link>
-              <Link to="/client-dashboard/purchases" onClick={() => setIsMobileMenuOpen(false)} className="text-emerald-400 font-bold text-lg hover:text-emerald-300">My Purchases</Link>
+              <Link to="/client-dashboard/projects" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold text-lg hover:text-indigo-400">My Projects</Link>
             </>
           )}
           {(user?.role?.toLowerCase().trim() === 'admin' || user?.role?.toLowerCase().trim() === 'superadmin') && (
@@ -255,10 +254,10 @@ const Navbar = () => {
                 <Link
                   to="/client-dashboard/purchases"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 w-full max-w-xs text-center rounded-xl"
+                  className="flex items-center justify-center bg-emerald-500 text-white p-2.5 rounded-lg"
+                  title="My Purchases"
                 >
-                  <ShoppingCart size={20} />
-                  My Purchases
+                  <ShoppingCart size={18} />
                 </Link>
               )}
               <div className="flex items-center gap-2 text-white">
@@ -274,9 +273,8 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 w-full px-10">
-              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 text-emerald-300 font-bold py-3 w-full text-center border border-emerald-400/40 rounded-xl">
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center bg-emerald-500 text-white p-2.5 rounded-lg" title="My Purchases">
                 <ShoppingCart size={18} />
-                My Purchases
               </Link>
               <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-white font-bold py-3 w-full text-center border border-white/20 rounded-xl">Log In</Link>
               <Link to="/register" onClick={() => setIsMobileMenuOpen(false)} className="bg-indigo-600 text-white font-bold py-3 w-full text-center rounded-xl">Sign Up</Link>

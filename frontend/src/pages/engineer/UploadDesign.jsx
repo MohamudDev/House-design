@@ -1,9 +1,16 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { UploadCloud, CheckCircle2, AlertCircle, FileImage, Box, FileText } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, FileImage, Box, FileText, Ruler } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ModelViewer from '../../components/ModelViewer';
+
+const calcArea = (length, width) => {
+  const l = Number(length);
+  const w = Number(width);
+  if (!l || !w || l <= 0 || w <= 0) return '';
+  return Math.round(l * w * 100) / 100;
+};
 
 const UploadDesign = () => {
   const { user } = useContext(AuthContext);
@@ -17,6 +24,8 @@ const UploadDesign = () => {
     kitchens: '',
     livingRooms: '',
     masterRooms: '',
+    houseLength: '',
+    houseWidth: '',
     carParking: false,
     budgetEstimate: '',
     description: '',
@@ -44,10 +53,15 @@ const UploadDesign = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  const houseArea = useMemo(
+    () => calcArea(formData.houseLength, formData.houseWidth),
+    [formData.houseLength, formData.houseWidth]
+  );
+
   const addInteriorRoom = () => {
     setInteriorGallery([
       ...interiorGallery,
-      { id: Date.now(), roomName: '', description: '', order: interiorGallery.length + 1, file: null, preview: null }
+      { id: Date.now(), roomName: '', description: '', order: interiorGallery.length + 1, length: '', width: '', file: null, preview: null }
     ]);
   };
 
@@ -79,12 +93,8 @@ const UploadDesign = () => {
         return units[i] || {
           unitName: `Unit ${i + 1}`,
           floorNumber: '',
-          bedrooms: '',
-          bathrooms: '',
-          kitchens: '',
-          livingRooms: '',
-          diningRooms: '',
-          balconies: '',
+          length: '',
+          width: '',
           area: ''
         };
       });
@@ -99,7 +109,12 @@ const UploadDesign = () => {
 
   const handleUnitChange = (index, field, value) => {
     const newUnits = [...units];
-    newUnits[index][field] = value;
+    newUnits[index] = { ...newUnits[index], [field]: value };
+    if (field === 'length' || field === 'width') {
+      const length = field === 'length' ? value : newUnits[index].length;
+      const width = field === 'width' ? value : newUnits[index].width;
+      newUnits[index].area = calcArea(length, width);
+    }
     setUnits(newUnits);
   };
 
@@ -142,10 +157,22 @@ const UploadDesign = () => {
       return;
     }
 
+    if (formData.houseType !== 'Apartment') {
+      if (!formData.houseLength || !formData.houseWidth || Number(formData.houseLength) <= 0 || Number(formData.houseWidth) <= 0) {
+        setLoading(false);
+        setMessage({ type: 'error', text: 'Please enter house length and width in meters.' });
+        return;
+      }
+    } else if (units.some((u) => !u.length || !u.width || Number(u.length) <= 0 || Number(u.width) <= 0)) {
+      setLoading(false);
+      setMessage({ type: 'error', text: 'Each apartment unit must have length and width in meters.' });
+      return;
+    }
+
     const submitData = new FormData();
     submitData.append('title', formData.title);
     submitData.append('houseType', formData.houseType);
-    submitData.append('rooms', formData.houseType === 'Apartment' ? 0 : formData.rooms);
+    submitData.append('rooms', formData.houseType === 'Apartment' ? 1 : formData.rooms);
     submitData.append('bathrooms', formData.houseType === 'Apartment' ? 0 : formData.bathrooms);
     submitData.append('kitchens', formData.houseType === 'Apartment' ? 0 : formData.kitchens);
     submitData.append('livingRooms', formData.houseType === 'Apartment' ? 0 : formData.livingRooms);
@@ -153,6 +180,11 @@ const UploadDesign = () => {
     submitData.append('carParking', formData.carParking);
     submitData.append('budgetEstimate', formData.budgetEstimate);
     submitData.append('description', formData.description);
+
+    if (formData.houseType !== 'Apartment') {
+      submitData.append('houseLength', formData.houseLength);
+      submitData.append('houseWidth', formData.houseWidth);
+    }
 
     if (formData.carParking) {
       submitData.append('parkingType', formData.parkingType);
@@ -168,7 +200,12 @@ const UploadDesign = () => {
       submitData.append('location', formData.location);
       submitData.append('numberOfFloors', formData.numberOfFloors);
       submitData.append('totalUnits', formData.totalUnits);
-      submitData.append('units', JSON.stringify(units));
+      submitData.append('units', JSON.stringify(units.map((u) => ({
+        ...u,
+        length: Number(u.length),
+        width: Number(u.width),
+        area: calcArea(u.length, u.width) || Number(u.area) || 0
+      }))));
     }
 
     if (files.images) submitData.append('images', files.images);
@@ -178,6 +215,9 @@ const UploadDesign = () => {
       roomName: item.roomName,
       description: item.description,
       order: item.order,
+      length: item.length ? Number(item.length) : undefined,
+      width: item.width ? Number(item.width) : undefined,
+      area: calcArea(item.length, item.width) || undefined,
       hasNewFile: !!item.file
     }));
     submitData.append('interiorGalleryData', JSON.stringify(galleryData));
@@ -201,9 +241,10 @@ const UploadDesign = () => {
       setMessage({ type: 'success', text: 'Design uploaded successfully! It is now pending admin approval.' });
       
       // Reset form
-      setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', livingRooms: '', masterRooms: '', carParking: false, budgetEstimate: '', description: '' });
+      setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', livingRooms: '', masterRooms: '', houseLength: '', houseWidth: '', carParking: false, budgetEstimate: '', description: '', location: '', numberOfFloors: '', totalUnits: '', parkingType: 'Outdoor', vehicleType: [], totalParkingSpaces: '', parkingLocation: 'Ground Floor', reservedParking: false, visitorParking: false, parkingDescription: '' });
       setFiles({ model3D: null, images: null });
       setInteriorGallery([]);
+      setUnits([]);
       
       // Redirect after 2 seconds
       setTimeout(() => navigate('/engineer-dashboard/designs'), 2000);
@@ -305,6 +346,26 @@ const UploadDesign = () => {
                   <input type="number" name="masterRooms" required min="0" value={formData.masterRooms} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 1" />
                 </div>
 
+                <div className="col-span-1 md:col-span-2 mt-2">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                    <Ruler size={16} className="text-indigo-600" /> House Dimensions (meters)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Length (m)</label>
+                      <input type="number" name="houseLength" required min="0.01" step="0.01" value={formData.houseLength} onChange={handleInputChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. 12" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Width (m)</label>
+                      <input type="number" name="houseWidth" required min="0.01" step="0.01" value={formData.houseWidth} onChange={handleInputChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. 8" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Area (m²)</label>
+                      <input type="text" readOnly value={houseArea ? `${houseArea} m²` : '—'} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none" />
+                    </div>
+                  </div>
+                </div>
+
               </>
             ) : (
               <>
@@ -321,7 +382,7 @@ const UploadDesign = () => {
 
             <div className="col-span-1 md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget (USD)</label>
-              <input type="number" name="budgetEstimate" required min="0" step="0.1" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 250" />
+              <input type="number" name="budgetEstimate" required min="0.01" step="0.01" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 0.01" />
             </div>
 
             <div className="col-span-1 md:col-span-2">
@@ -430,32 +491,16 @@ const UploadDesign = () => {
                       <input type="text" required value={unit.floorNumber} onChange={(e) => handleUnitChange(index, 'floorNumber', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. Ground Floor" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Area (Sq m)</label>
-                      <input type="number" required value={unit.area} onChange={(e) => handleUnitChange(index, 'area', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. 120" />
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Length (m)</label>
+                      <input type="number" required min="0.01" step="0.01" value={unit.length || ''} onChange={(e) => handleUnitChange(index, 'length', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. 10" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Bedrooms</label>
-                      <input type="number" required min="1" value={unit.bedrooms} onChange={(e) => handleUnitChange(index, 'bedrooms', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Width (m)</label>
+                      <input type="number" required min="0.01" step="0.01" value={unit.width || ''} onChange={(e) => handleUnitChange(index, 'width', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. 8" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Bathrooms</label>
-                      <input type="number" required min="1" value={unit.bathrooms} onChange={(e) => handleUnitChange(index, 'bathrooms', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Kitchens</label>
-                      <input type="number" required min="1" value={unit.kitchens} onChange={(e) => handleUnitChange(index, 'kitchens', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Living Rooms</label>
-                      <input type="number" required min="1" value={unit.livingRooms} onChange={(e) => handleUnitChange(index, 'livingRooms', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Dining Rooms (Opt)</label>
-                      <input type="number" min="0" value={unit.diningRooms} onChange={(e) => handleUnitChange(index, 'diningRooms', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Balconies (Opt)</label>
-                      <input type="number" min="0" value={unit.balconies} onChange={(e) => handleUnitChange(index, 'balconies', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none" />
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Area (m²)</label>
+                      <input type="text" readOnly value={calcArea(unit.length, unit.width) || unit.area || '—'} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none" />
                     </div>
                   </div>
                 </div>
@@ -545,6 +590,41 @@ const UploadDesign = () => {
                             <option value="Bedroom">Bedroom</option>
                             <option value="Bathroom">Bathroom</option>
                           </select>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Length (m)</label>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={room.length || ''}
+                              onChange={(e) => handleInteriorChange(room.id, 'length', e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none"
+                              placeholder="e.g. 4"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Width (m)</label>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={room.width || ''}
+                              onChange={(e) => handleInteriorChange(room.id, 'width', e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none"
+                              placeholder="e.g. 3.5"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Area (m²)</label>
+                            <input
+                              type="text"
+                              readOnly
+                              value={calcArea(room.length, room.width) || '—'}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none"
+                            />
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Description (Optional)</label>

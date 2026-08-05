@@ -34,12 +34,18 @@ const EngineerReports = () => {
       setLoading(true);
       setError(null);
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+      const config = {
+        headers: { Authorization: `Bearer ${userInfo.token}` },
+        timeout: 20000
+      };
       const { data } = await axios.get('/api/engineer/stats', config);
       setStats(data.data);
     } catch (err) {
       console.error('Error fetching stats:', err);
-      setError(err.response?.data?.message || 'Failed to load analytics reports');
+      const msg = err.code === 'ECONNABORTED'
+        ? 'Report request timed out. Please try again.'
+        : (err.response?.data?.message || 'Failed to load analytics reports');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -140,21 +146,21 @@ const EngineerReports = () => {
   const exportToExcel = (dataList, filename) => exportToCSV(dataList, filename);
   const handlePrint = () => window.print();
 
-  if (error) return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="text-red-500 dark:text-red-400 text-lg flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-        <Activity /> {error}
-      </div>
-    </div>
-  );
-
-  if (loading || !stats) return (
+  if (loading) return (
     <div className="p-6 space-y-6">
       <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/3 animate-pulse"></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[...Array(8)].map((_, i) => <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse"></div>)}
       </div>
       <div className="h-72 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+    </div>
+  );
+
+  if (error || !stats) return (
+    <div className="flex h-64 items-center justify-center">
+      <div className="text-red-500 dark:text-red-400 text-lg flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+        <Activity /> {error || 'Failed to load analytics reports'}
+      </div>
     </div>
   );
 

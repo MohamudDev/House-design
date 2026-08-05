@@ -26,7 +26,10 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
       };
-      const { data } = await axios.post('/api/auth/login', { email, password }, config);
+      const { data } = await axios.post('/api/auth/login', {
+        email: (email || '').trim().toLowerCase(),
+        password,
+      }, config);
       setUser(data);
       localStorage.setItem('userInfo', JSON.stringify(data));
       return { success: true, user: data };

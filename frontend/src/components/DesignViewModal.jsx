@@ -1,5 +1,6 @@
-import { X, Box, Info, DollarSign, Layout, Clock, AlertTriangle, MessageSquare, Send, ShoppingCart, MapPin, Building } from 'lucide-react';
+import { X, Box, Info, DollarSign, Layout, Clock, AlertTriangle, MessageSquare, Send, ShoppingCart, MapPin, Building, Ruler } from 'lucide-react';
 import { useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import ModelViewer from './ModelViewer';
 import PaymentModal from './client/PaymentModal';
@@ -8,6 +9,7 @@ import { resolveMediaInObject } from '../utils/mediaUrl';
 
 const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -200,6 +202,12 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                     </button>
                     <div className="text-center max-w-[50%]">
                       <h4 className="font-bold text-lg">{design.interiorGallery[currentRoomIndex].roomName}</h4>
+                      {(design.interiorGallery[currentRoomIndex].length && design.interiorGallery[currentRoomIndex].width) && (
+                        <p className="text-xs text-indigo-300 mt-1">
+                          {design.interiorGallery[currentRoomIndex].length} × {design.interiorGallery[currentRoomIndex].width} m
+                          {design.interiorGallery[currentRoomIndex].area ? ` (${design.interiorGallery[currentRoomIndex].area} m²)` : ''}
+                        </p>
+                      )}
                       {design.interiorGallery[currentRoomIndex].description && (
                         <p className="text-xs text-slate-300 mt-1 truncate">{design.interiorGallery[currentRoomIndex].description}</p>
                       )}
@@ -327,6 +335,17 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                     </div>
                     <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{design.masterRooms || 0}</p>
                   </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 md:col-span-2">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+                      <Box size={14} />
+                      <span className="text-xs font-semibold uppercase tracking-tight">House Size</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                      {design.houseLength && design.houseWidth
+                        ? `${design.houseLength} × ${design.houseWidth} m${design.houseArea ? ` (${design.houseArea} m²)` : ''}`
+                        : 'Not specified'}
+                    </p>
+                  </div>
                 </>
               )}
               <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -361,35 +380,16 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                         </span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        {(unit.length || unit.width) && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Size</span>
+                            <span className="font-medium">{unit.length} × {unit.width} m</span>
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Area</span>
                           <span className="font-medium">{unit.area} sq m</span>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Bedrooms</span>
-                          <span className="font-medium">{unit.bedrooms}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Bathrooms</span>
-                          <span className="font-medium">{unit.bathrooms}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Kitchens</span>
-                          <span className="font-medium">{unit.kitchens}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Living Rooms</span>
-                          <span className="font-medium">{unit.livingRooms}</span>
-                        </div>
-                        {(unit.diningRooms > 0 || unit.balconies > 0) && (
-                          <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">Extras</span>
-                            <span className="font-medium">
-                              {unit.diningRooms > 0 ? `${unit.diningRooms} Dining ` : ''}
-                              {unit.balconies > 0 ? `${unit.balconies} Balcony` : ''}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -557,7 +557,17 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                   </div>
                 </div>
                 {user?.role === 'client' && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate(`/client-dashboard/customise/${design._id}`);
+                      }}
+                      className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <Ruler size={16} />
+                      Customise Design
+                    </button>
                     {!showMessageForm && !messageSent && (
                       <button 
                         onClick={handleOpenChat}

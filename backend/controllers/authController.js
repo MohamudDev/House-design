@@ -23,7 +23,8 @@ exports.register = async (req, res) => {
     
     // Fallback to empty object to prevent "Cannot destructure property" crash
     const body = req.body || {};
-    const { name, email, password, role, acceptedTerms } = body;
+    const { name, password, role, acceptedTerms } = body;
+    const email = (body.email || '').trim().toLowerCase();
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Missing required fields. The form data was not parsed correctly by the server.' });
@@ -46,8 +47,10 @@ exports.register = async (req, res) => {
       selfieUrl = getFileUrl(req.files['selfie'][0]);
     }
 
-    // Check if user exists
-    const userExists = await User.findOne({ email });
+    // Check if user exists (case-insensitive)
+    const userExists = await User.findOne({
+      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
 
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
@@ -88,12 +91,20 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
 
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Case-insensitive email match (same as forgot-password)
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    }).select('+password');
 
     if (!user) {
+      console.log('Login failed: no user for', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -101,6 +112,7 @@ exports.login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
+      console.log('Login failed: bad password for', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 

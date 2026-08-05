@@ -2,15 +2,48 @@ const Transaction = require('../models/Transaction');
 const Design = require('../models/Design');
 const User = require('../models/User');
 const axios = require('axios');
+const { createPaidProjectFromTransaction } = require('./projectController');
 
-// @desc    Process WaafiPay checkout
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
+
+async function chargeWaafi({ accountNo, amount, description }) {
+  const waafiPayload = {
+    schemaVersion: '1.0',
+    requestId: Date.now().toString(),
+    timestamp: new Date().getTime().toString(),
+    channelName: 'WEB',
+    serviceName: 'API_PURCHASE',
+    serviceParams: {
+      merchantUid: process.env.WAAFI_MERCHANT_UID || 'M0910291',
+      apiUserId: process.env.WAAFI_API_USER_ID || '1000416',
+      apiKey: process.env.WAAFI_API_KEY || 'API-675418888AHX',
+      paymentMethod: 'mwallet_account',
+      payerInfo: {
+        accountNo
+      },
+      transactionInfo: {
+        referenceId: `REF-${Date.now()}`,
+        invoiceId: `INV-${Date.now()}`,
+        amount,
+        currency: 'USD',
+        description
+      }
+    }
+  };
+
+  const waafiResponse = await axios.post('https://api.waafipay.net/asm', waafiPayload);
+  return waafiResponse.data;
+}
+
+// @desc    Process WaafiPay checkout (full or half / tahy)
 // @route   POST /api/client/checkout/:designId
 // @access  Private/Client
 exports.checkout = async (req, res) => {
   try {
     const designId = req.params.designId;
     const buyerId = req.user.id;
-    const { accountNo } = req.body;
+    const { accountNo, paymentPlan: planRaw } = req.body;
+    const paymentPlan = planRaw === 'half' ? 'half' : 'full';
 
     if (!accountNo) {
       return res.status(400).json({ success: false, message: 'Mobile Money Account Number is required' });
@@ -21,83 +54,160 @@ exports.checkout = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Design not found' });
     }
 
-    // Check if the user is buying their own design
     if (design.engineer._id.toString() === buyerId) {
       return res.status(400).json({ success: false, message: 'You cannot buy your own design' });
     }
 
-    // Check if already purchased
-    const existingTransaction = await Transaction.findOne({ buyer: buyerId, design: designId, paymentStatus: 'completed' });
+    const existingTransaction = await Transaction.findOne({
+      buyer: buyerId,
+      design: designId,
+      paymentStatus: 'completed'
+    });
     if (existingTransaction) {
+      if (existingTransaction.remainingStatus === 'pending' && existingTransaction.amountRemaining > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Half payment already made. Please pay the remaining Tahy balance.',
+          transactionId: existingTransaction._id,
+          amountRemaining: existingTransaction.amountRemaining
+        });
+      }
       return res.status(400).json({ success: false, message: 'You have already purchased this design' });
     }
 
-    const amountPaid = design.price || 100;
-    
-    // Call WaafiPay API
-    const waafiPayload = {
-      schemaVersion: "1.0",
-      requestId: Date.now().toString(),
-      timestamp: new Date().getTime().toString(),
-      channelName: "WEB",
-      serviceName: "API_PURCHASE",
-      serviceParams: {
-        merchantUid: process.env.WAAFI_MERCHANT_UID || "M0910291",
-        apiUserId: process.env.WAAFI_API_USER_ID || "1000416",
-        apiKey: process.env.WAAFI_API_KEY || "API-675418888AHX",
-        paymentMethod: "mwallet_account",
-        payerInfo: {
-          accountNo: accountNo
-        },
-        transactionInfo: {
-          referenceId: `REF-${Date.now()}`,
-          invoiceId: `INV-${Date.now()}`,
-          amount: amountPaid,
-          currency: "USD",
-          description: `Purchase of 3D Design: ${design.title}`
-        }
-      }
-    };
+    const totalPrice = round2(design.price || 100);
+    const amountPaid = paymentPlan === 'half' ? round2(totalPrice / 2) : totalPrice;
+    const amountRemaining = paymentPlan === 'half' ? round2(totalPrice - amountPaid) : 0;
 
-    const waafiResponse = await axios.post('https://api.waafipay.net/asm', waafiPayload);
-    
-    // Verify Payment Success
-    if (waafiResponse.data && waafiResponse.data.responseCode === "2001") {
-      const commissionAmount = amountPaid * 0.10;
-      const engineerAmount = amountPaid - commissionAmount;
+    const waafiData = await chargeWaafi({
+      accountNo,
+      amount: amountPaid,
+      description:
+        paymentPlan === 'half'
+          ? `Half payment (Tahy) for 3D Design: ${design.title}`
+          : `Purchase of 3D Design: ${design.title}`
+    });
 
-      // Save Transaction
+    if (waafiData && waafiData.responseCode === '2001') {
+      const commissionAmount = round2(amountPaid * 0.1);
+      const engineerAmount = round2(amountPaid - commissionAmount);
+
       const transaction = await Transaction.create({
         buyer: buyerId,
         engineer: design.engineer._id,
         design: designId,
+        totalPrice,
         amountPaid,
+        amountRemaining,
+        paymentPlan,
+        remainingStatus: paymentPlan === 'half' ? 'pending' : 'n/a',
         commissionAmount,
         engineerAmount,
         paymentStatus: 'completed',
-        transactionId: waafiResponse.data.params?.transactionId || `WAAFI-${Date.now()}`
+        transactionId: waafiData.params?.transactionId || `WAAFI-${Date.now()}`
       });
 
-      // Add earnings to Engineer Wallet
       await User.findByIdAndUpdate(design.engineer._id, {
         $inc: { walletBalance: engineerAmount }
       });
 
+      await Design.findByIdAndUpdate(designId, { $inc: { salesCount: 1 } });
+
+      try {
+        await createPaidProjectFromTransaction({
+          transaction,
+          design,
+          io: req.io,
+          isHalfPayment: paymentPlan === 'half'
+        });
+      } catch (projectErr) {
+        console.error('Project auto-create failed:', projectErr.message);
+      }
+
       return res.status(201).json({
         success: true,
         data: transaction,
-        message: 'Payment Successful via WaafiPay'
-      });
-    } else {
-      // Payment Failed
-      return res.status(400).json({ 
-        success: false, 
-        message: waafiResponse.data.responseMsg || 'Payment failed via WaafiPay' 
+        message:
+          paymentPlan === 'half'
+            ? 'Half payment successful. Remaining balance is marked as Tahy.'
+            : 'Payment Successful via WaafiPay'
       });
     }
 
+    return res.status(400).json({
+      success: false,
+      message: waafiData.responseMsg || 'Payment failed via WaafiPay'
+    });
   } catch (error) {
     console.error('WaafiPay Error:', error.response?.data || error.message);
+    res.status(500).json({ success: false, message: 'Server error during payment processing' });
+  }
+};
+
+// @desc    Pay remaining Tahy balance after half payment
+// @route   POST /api/client/pay-remaining/:transactionId
+// @access  Private/Client
+exports.payRemaining = async (req, res) => {
+  try {
+    const buyerId = req.user.id;
+    const { accountNo } = req.body;
+
+    if (!accountNo) {
+      return res.status(400).json({ success: false, message: 'Mobile Money Account Number is required' });
+    }
+
+    const transaction = await Transaction.findById(req.params.transactionId).populate('design');
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+    if (transaction.buyer.toString() !== buyerId) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (transaction.paymentStatus !== 'completed' || transaction.remainingStatus !== 'pending') {
+      return res.status(400).json({ success: false, message: 'No Tahy balance due on this purchase' });
+    }
+
+    const amountDue = round2(transaction.amountRemaining);
+    if (amountDue <= 0) {
+      return res.status(400).json({ success: false, message: 'No remaining balance' });
+    }
+
+    const designTitle = transaction.design?.title || 'design';
+    const waafiData = await chargeWaafi({
+      accountNo,
+      amount: amountDue,
+      description: `Tahy (remaining) payment for 3D Design: ${designTitle}`
+    });
+
+    if (!(waafiData && waafiData.responseCode === '2001')) {
+      return res.status(400).json({
+        success: false,
+        message: waafiData.responseMsg || 'Payment failed via WaafiPay'
+      });
+    }
+
+    const commissionAmount = round2(amountDue * 0.1);
+    const engineerAmount = round2(amountDue - commissionAmount);
+
+    transaction.amountPaid = round2(transaction.amountPaid + amountDue);
+    transaction.amountRemaining = 0;
+    transaction.remainingStatus = 'paid';
+    transaction.remainingTransactionId = waafiData.params?.transactionId || `WAAFI-TAHY-${Date.now()}`;
+    transaction.commissionAmount = round2(transaction.commissionAmount + commissionAmount);
+    transaction.engineerAmount = round2(transaction.engineerAmount + engineerAmount);
+    await transaction.save();
+
+    await User.findByIdAndUpdate(transaction.engineer, {
+      $inc: { walletBalance: engineerAmount }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: transaction,
+      message: 'Tahy balance paid successfully'
+    });
+  } catch (error) {
+    console.error('Pay remaining error:', error.response?.data || error.message);
     res.status(500).json({ success: false, message: 'Server error during payment processing' });
   }
 };

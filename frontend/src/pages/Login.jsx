@@ -17,7 +17,7 @@ const Login = () => {
     setIsLoading(true);
     setError('');
     
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
     
     if (result.success) {
       const userRole = (result.user.role || '').toLowerCase().trim();

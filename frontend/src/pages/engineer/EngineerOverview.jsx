@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UploadCloud, CheckCircle, MessageSquare, DollarSign, Wallet, Building, Activity, TrendingUp, Clock, AlertCircle, XCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle, MessageSquare, DollarSign, Wallet, Building, Activity, TrendingUp, Clock, AlertCircle, XCircle, ClipboardList, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EngineerOverview = () => {
@@ -11,15 +11,31 @@ const EngineerOverview = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
         const config = {
-          headers: { Authorization: `Bearer ${userInfo.token}` }
+          headers: { Authorization: `Bearer ${userInfo.token}` },
+          timeout: 20000
         };
-        const { data } = await axios.get('/api/engineer/stats', config);
-        setStats(data.data);
+        const [statsRes, projectsRes] = await Promise.allSettled([
+          axios.get('/api/engineer/stats', config),
+          axios.get('/api/projects/stats', config)
+        ]);
+
+        if (statsRes.status !== 'fulfilled') {
+          const err = statsRes.reason;
+          throw err;
+        }
+
+        const projectStats = projectsRes.status === 'fulfilled' ? projectsRes.value.data.data : null;
+        setStats({ ...statsRes.value.data.data, projectStats });
       } catch (error) {
         console.error('Error fetching stats:', error);
-        setError(error.response?.data?.message || 'Failed to load dashboard data');
+        const msg = error.code === 'ECONNABORTED'
+          ? 'Dashboard request timed out. Please try again.'
+          : (error.response?.data?.message || 'Failed to load dashboard data');
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -41,18 +57,18 @@ const EngineerOverview = () => {
     }
   };
 
-  if (error) return (
+  if (loading) return (
     <div className="flex h-64 items-center justify-center">
-      <div className="text-red-500 dark:text-red-400 text-lg flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-        <AlertCircle /> {error}
+      <div className="text-slate-500 dark:text-slate-400 animate-pulse text-lg flex items-center gap-2">
+        <Activity className="animate-spin" /> Loading dashboard...
       </div>
     </div>
   );
 
-  if (loading || !stats) return (
+  if (error || !stats) return (
     <div className="flex h-64 items-center justify-center">
-      <div className="text-slate-500 dark:text-slate-400 animate-pulse text-lg flex items-center gap-2">
-        <Activity className="animate-spin" /> Loading dashboard...
+      <div className="text-red-500 dark:text-red-400 text-lg flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+        <AlertCircle /> {error || 'Failed to load dashboard data'}
       </div>
     </div>
   );
@@ -97,6 +113,32 @@ const EngineerOverview = () => {
           </div>
         </div>
       )}
+
+      {/* Project Tracking widgets */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Project Delivery</h2>
+          <Link to="/engineer-dashboard/projects" className="text-sm font-bold text-indigo-600 hover:underline">View all</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-indigo-600 mb-2"><ClipboardList size={18} /><span className="text-xs font-bold uppercase text-slate-400">Active</span></div>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.projectStats?.active || 0}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-emerald-600 mb-2"><CheckCircle size={18} /><span className="text-xs font-bold uppercase text-slate-400">Completed</span></div>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.projectStats?.completed || 0}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-amber-600 mb-2"><RefreshCw size={18} /><span className="text-xs font-bold uppercase text-slate-400">Revisions</span></div>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.projectStats?.revisionRequests || 0}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-blue-600 mb-2"><Clock size={18} /><span className="text-xs font-bold uppercase text-slate-400">Deadlines</span></div>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.projectStats?.upcomingDeadlines?.length || 0}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Wallet Section */}
       <div className="bg-gradient-to-r from-slate-900 to-indigo-900 dark:from-black dark:to-slate-900 rounded-2xl shadow-lg p-8 text-white flex flex-col md:flex-row items-center justify-between">

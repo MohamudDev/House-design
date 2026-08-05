@@ -39,6 +39,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cacheId: 'house-design-v20260805',
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

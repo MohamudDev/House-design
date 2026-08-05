@@ -2,12 +2,17 @@ import { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { SocketContext } from '../../context/SocketContext';
-import { Home, MessageSquare, LogOut, Layout, Box, ShoppingCart, AlertCircle, FolderKanban } from 'lucide-react';
+import { Home, MessageSquare, LogOut, Layout, ShoppingCart, AlertCircle, ArrowLeft } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
-const ClientNavbar = () => {
+/**
+ * @param {'marketplace' | 'workspace'} variant
+ * marketplace = full marketplace icons; workspace = My Projects area (no marketplace icons)
+ */
+const ClientNavbar = ({ variant = 'marketplace' }) => {
   const { user, logout } = useContext(AuthContext);
-  const { unreadCount } = useContext(SocketContext);
+  const { unreadCount } = useContext(SocketContext) || {};
+  const isWorkspace = variant === 'workspace';
 
   return (
     <nav className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center transition-colors">
@@ -21,38 +26,44 @@ const ClientNavbar = () => {
       </div>
 
       <div className="flex items-center gap-6">
-        <Link to="/" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Home Page">
-          <Home size={20} />
-        </Link>
-        <Link to="/client-dashboard" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Marketplace">
-          <Layout size={20} />
-        </Link>
-        <Link to="/client-dashboard/my-designs" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="My 3D Designs">
-          <Box size={20} />
-        </Link>
-        <Link to="/client-dashboard/purchases" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="My Purchases">
-          <ShoppingCart size={20} />
-        </Link>
-        <Link to="/client-dashboard/complaints" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Submit Complaint">
-          <AlertCircle size={20} />
-        </Link>
-        <Link to="/client-dashboard/collaborations" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="My Collaborations">
-          <FolderKanban size={20} />
-        </Link>
-        <Link to="/client-dashboard/messages" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl relative" title="Messages">
-          <MessageSquare size={20} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </Link>
+        {isWorkspace ? (
+          <Link
+            to="/client-dashboard"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Marketplace</span>
+          </Link>
+        ) : (
+          <>
+            <Link to="/" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Home Page">
+              <Home size={20} />
+            </Link>
+            <Link to="/client-dashboard" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Marketplace">
+              <Layout size={20} />
+            </Link>
+            <Link to="/client-dashboard/purchases" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="My Purchases">
+              <ShoppingCart size={20} />
+            </Link>
+            <Link to="/client-dashboard/complaints" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl" title="Submit Complaint">
+              <AlertCircle size={20} />
+            </Link>
+            <Link to="/client-dashboard/messages" className="text-slate-500 hover:text-indigo-600 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-xl relative" title="Messages">
+              <MessageSquare size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
+          </>
+        )}
         <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" />
         <div className="text-right hidden sm:block">
           <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Welcome back,</p>
           <p className="text-sm font-bold text-slate-900 dark:text-white">{user?.name}</p>
         </div>
-        <button 
+        <button
           onClick={logout}
           className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all active:scale-95"
           title="Logout"

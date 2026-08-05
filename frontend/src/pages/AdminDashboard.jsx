@@ -5,6 +5,7 @@ import axios from 'axios';
 import { Mail, Menu, LogOut } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import NotificationCenter from '../components/NotificationCenter';
 
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -56,6 +57,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const pageTitles = [
+    { path: '/admin-dashboard', name: 'Dashboard', exact: true },
+    { path: '/admin-dashboard/users', name: 'Manage Users' },
+    { path: '/admin-dashboard/designs', name: 'Manage Designs' },
+    { path: '/admin-dashboard/withdrawals', name: 'Payouts' },
+    { path: '/admin-dashboard/reports', name: 'Reports' },
+    { path: '/admin-dashboard/contacts', name: 'Inbox' },
+    { path: '/admin-dashboard/complaints', name: 'Complaints' },
+    { path: '/admin-dashboard/collaborations', name: 'Collaboration Documentation' },
+    { path: '/admin-dashboard/projects', name: 'Projects' },
+    { path: '/admin-dashboard/settings', name: 'Settings' },
+  ];
+
+  const currentPageName =
+    pageTitles.find((p) =>
+      p.exact ? location.pathname === p.path : location.pathname.startsWith(p.path)
+    )?.name || 'Dashboard';
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-300">
       <AdminSidebar isOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
@@ -70,7 +89,7 @@ const AdminDashboard = () => {
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Control Panel</h2>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-white">{currentPageName}</h2>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative mr-2" ref={popoverRef}>
@@ -138,6 +157,7 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
+            <NotificationCenter />
             <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 mr-1 md:mr-2" />
             <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">Administrator,</span>
             <span className="hidden sm:inline font-bold text-slate-900 dark:text-white">{user?.name}</span>

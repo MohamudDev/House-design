@@ -17,26 +17,23 @@ const AdminOverview = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchStats = useCallback(async ({ silent = false, retriesLeft = 2 } = {}) => {
-    if (!silent) setLoading(true);
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       const config = {
-        headers: { Authorization: `Bearer ${userInfo.token}` }
+        headers: { Authorization: `Bearer ${userInfo.token}` },
+        timeout: 15000
       };
       const { data } = await axios.get('/api/admin/stats', config);
       setStats(data.data);
-      setError(null);
     } catch (err) {
-      // The backend can take a moment to finish connecting to the database
-      // right after it starts up. Instead of silently leaving every card at
-      // "0", retry a couple of times before surfacing an error to the user.
-      if (retriesLeft > 0) {
-        setTimeout(() => fetchStats({ silent: true, retriesLeft: retriesLeft - 1 }), 1500);
-        return;
-      }
       console.error('Error fetching stats:', err);
-      setError('Could not load dashboard data. Make sure the backend server is running.');
+      const msg = err.code === 'ECONNABORTED'
+        ? 'Dashboard request timed out. Please try again.'
+        : (err.response?.data?.message || 'Could not load dashboard data. Make sure the backend server is running.');
+      setError(msg);
     } finally {
       setLoading(false);
     }

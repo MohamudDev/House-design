@@ -42,6 +42,7 @@ const AdminReports = () => {
   const [pageSize, setPageSize] = useState(10);
   const [sortField, setSortField] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Column Visibility States
   const [userVisibleColumns, setUserVisibleColumns] = useState({
@@ -89,13 +90,17 @@ const AdminReports = () => {
       setError(null);
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       const config = {
-        headers: { Authorization: `Bearer ${userInfo.token}` }
+        headers: { Authorization: `Bearer ${userInfo.token}` },
+        timeout: 30000
       };
       const { data } = await axios.get('/api/admin/reports', config);
       setReportData(data.data);
     } catch (err) {
       console.error('Error fetching reports:', err);
-      setError(err.response?.data?.message || 'Failed to load report analytics.');
+      const msg = err.code === 'ECONNABORTED'
+        ? 'Report request timed out. Please try again.'
+        : (err.response?.data?.message || 'Failed to load report analytics.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -163,6 +168,7 @@ const AdminReports = () => {
         } else if (start) {
           return date >= start;
         } else if (end) {
+          end.setHours(23, 59, 59, 999);
           return date <= end;
         }
         return true;
@@ -192,13 +198,42 @@ const AdminReports = () => {
     parking: h.carParking ? 'Yes' : 'No'
   }));
 
+  // Earliest real activity — custom dates before this must not be selectable
+  const earliestActivityDate = (() => {
+    const dates = [
+      ...(reportData?.allUsers || []).map((u) => u.createdAt),
+      ...(reportData?.allDesigns || []).map((d) => d.createdAt),
+      ...(reportData?.allComplaints || []).map((c) => c.createdAt),
+      ...(reportData?.allTransactions || []).map((t) => t.createdAt),
+      ...(reportData?.allMessages || []).map((m) => m.createdAt),
+    ]
+      .filter(Boolean)
+      .map((d) => new Date(d).getTime())
+      .filter((t) => !Number.isNaN(t));
+    if (dates.length === 0) return null;
+    const earliest = new Date(Math.min(...dates));
+    return earliest.toISOString().slice(0, 10);
+  })();
+
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+
+  const clampCustomDate = (value) => {
+    if (!value) return '';
+    let next = value;
+    // Cannot pick before first activity
+    if (earliestActivityDate && next < earliestActivityDate) next = earliestActivityDate;
+    // Cannot pick a future date (time has not come yet)
+    if (next > todayDateStr) next = todayDateStr;
+    return next;
+  };
+
   // Filtering Lists
   const filteredUsers = enrichedUsers.filter(u => {
     if (!isWithinDateRange(u.createdAt)) return false;
     if (roleFilter !== 'All' && u.role.toLowerCase() !== roleFilter.toLowerCase()) return false;
     
-    // Status Filter: active, inactive, blocked, verified, pending, rejected
-    if (statusFilter !== 'All') {
+    // Status Filter only applies on Users tab (avoid Overview design-status clashing)
+    if (activeTab === 'users' && statusFilter !== 'All') {
       const matchStatus = statusFilter.toLowerCase();
       if (['active', 'inactive', 'blocked'].includes(matchStatus) && u.status !== matchStatus) return false;
       if (['verified', 'pending', 'rejected'].includes(matchStatus) && u.verification !== matchStatus) return false;
@@ -217,7 +252,7 @@ const AdminReports = () => {
   const filteredHouses = enrichedHouses.filter(h => {
     if (!isWithinDateRange(h.createdAt)) return false;
     if (propTypeFilter !== 'All' && h.houseType.toLowerCase() !== propTypeFilter.toLowerCase()) return false;
-    if (statusFilter !== 'All' && h.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+    if ((activeTab === 'houses' || activeTab === 'overview') && statusFilter !== 'All' && h.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
     if (selectedEngineerFilter !== 'All' && h.engineer?._id !== selectedEngineerFilter) return false;
     
     if (bedroomsFilter !== 'All' && String(h.bedrooms) !== bedroomsFilter) return false;
@@ -331,10 +366,6 @@ const AdminReports = () => {
   const exportToExcel = (dataList, filename) => {
     // Basic Excel XML format
     exportToCSV(dataList, filename);
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   // Admin Actions APIs
@@ -470,12 +501,12 @@ const AdminReports = () => {
     );
   }
 
-  if (error) {
+  if (error || !reportData) {
     return (
       <div className="p-8 text-center space-y-4">
         <AlertTriangle className="text-red-500 mx-auto" size={48} />
         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Something went wrong</h3>
-        <p className="text-sm text-slate-500">{error}</p>
+        <p className="text-sm text-slate-500">{error || 'Failed to load report analytics.'}</p>
         <button onClick={fetchReports} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all">
           Try Again
         </button>
@@ -527,6 +558,275 @@ const AdminReports = () => {
     const ratings = enrichedHouses.filter(h => h.engineer?._id === engineerId).flatMap(h => h.ratings || []);
     if (ratings.length === 0) return null;
     return ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+  };
+
+  const dateRangeLabel = (() => {
+    const labels = {
+      all: 'All Time', today: 'Today', yesterday: 'Yesterday',
+      '7days': 'Last 7 Days', '30days': 'Last 30 Days',
+      thismonth: 'This Month', lastmonth: 'Last Month', thisyear: 'This Year',
+      custom: customStartDate || customEndDate
+        ? `${customStartDate || '…'} – ${customEndDate || '…'}`
+        : 'Custom'
+    };
+    return labels[dateRange] || dateRange;
+  })();
+
+  /** Build a multi-page PDF of the full filtered report (not a viewport screenshot). */
+  const exportToPDF = async () => {
+    try {
+      setExportingPdf(true);
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 36;
+      const usableW = pageW - margin * 2;
+      let y = margin;
+
+      const ensureSpace = (needed = 20) => {
+        if (y + needed > pageH - margin) {
+          doc.addPage();
+          y = margin;
+          return true;
+        }
+        return false;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text('House Design — Admin Report', margin, y);
+        y += 18;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const tabLabel = activeTab === 'bookings' ? 'Payments' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
+        doc.text(`Section: ${tabLabel}  |  Range: ${dateRangeLabel}  |  Generated: ${new Date().toLocaleString()}`, margin, y);
+        y += 10;
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        y += 16;
+      };
+
+      const drawTable = (columns, rows) => {
+        if (!rows.length) {
+          ensureSpace(24);
+          doc.setFontSize(10);
+          doc.setTextColor(148, 163, 184);
+          doc.text('No records match the current filters.', margin, y);
+          y += 16;
+          return;
+        }
+
+        const colW = columns.map((c) => (c.width || 1) * usableW / columns.reduce((s, col) => s + (col.width || 1), 0));
+        const rowH = 16;
+        const headerH = 18;
+
+        const paintHeader = () => {
+          ensureSpace(headerH + rowH);
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, y - 11, usableW, headerH, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(71, 85, 105);
+          let x = margin;
+          columns.forEach((col, i) => {
+            doc.text(String(col.label), x + 4, y);
+            x += colW[i];
+          });
+          y += headerH - 4;
+          doc.setDrawColor(226, 232, 240);
+          doc.line(margin, y, pageW - margin, y);
+          y += 10;
+        };
+
+        paintHeader();
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(51, 65, 85);
+
+        rows.forEach((row, rowIdx) => {
+          if (y + rowH > pageH - margin) {
+            doc.addPage();
+            y = margin;
+            paintHeader();
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(51, 65, 85);
+          }
+          if (rowIdx % 2 === 1) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(margin, y - 10, usableW, rowH, 'F');
+          }
+          let x = margin;
+          columns.forEach((col, i) => {
+            const raw = row[col.key] == null ? '' : String(row[col.key]);
+            const maxChars = Math.max(8, Math.floor(colW[i] / 5.2));
+            const text = raw.length > maxChars ? `${raw.slice(0, maxChars - 1)}…` : raw;
+            doc.text(text, x + 4, y);
+            x += colW[i];
+          });
+          y += rowH;
+        });
+      };
+
+      drawHeader();
+
+      if (activeTab === 'overview') {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Summary', margin, y);
+        y += 14;
+
+        const summary = [
+          ['Total Users', filteredUsers.length],
+          ['Clients', filteredUsers.filter((u) => u.role === 'client').length],
+          ['Engineers', filteredUsers.filter((u) => u.role === 'engineer').length],
+          ['House Designs', filteredHouses.length],
+          ['Rejected Designs', enrichedHouses.filter((h) => isWithinDateRange(h.createdAt) && h.status === 'rejected').length],
+          ['Complaints', filteredComplaints.length],
+          ['Pending Engineer Approvals', filteredUsers.filter((u) => u.role === 'engineer' && !u.isApproved).length],
+          ['Approved Engineers', filteredUsers.filter((u) => u.role === 'engineer' && u.isApproved).length],
+          ['Payments', filteredTransactions.length],
+        ];
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        summary.forEach(([label, value]) => {
+          ensureSpace(16);
+          doc.setTextColor(100, 116, 139);
+          doc.text(label, margin, y);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 41, 59);
+          doc.text(String(value).toLocaleString(), margin + 220, y);
+          doc.setFont('helvetica', 'normal');
+          y += 14;
+        });
+
+        y += 8;
+        ensureSpace(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Activity Feed (${dateRangeLabel})`, margin, y);
+        y += 14;
+
+        drawTable(
+          [
+            { key: 'type', label: 'Type', width: 1.2 },
+            { key: 'date', label: 'Date', width: 1.4 },
+            { key: 'text', label: 'Details', width: 5 },
+          ],
+          activityFeed.map((a) => ({
+            type: a.type,
+            date: a.date ? new Date(a.date).toLocaleString() : '',
+            text: a.text || '',
+          }))
+        );
+      } else if (activeTab === 'users') {
+        drawTable(
+          [
+            { key: 'name', label: 'Name', width: 1.6 },
+            { key: 'email', label: 'Email', width: 2.2 },
+            { key: 'role', label: 'Role', width: 1 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'verification', label: 'Verification', width: 1.1 },
+            { key: 'joined', label: 'Joined', width: 1.2 },
+          ],
+          filteredUsers.map((u) => ({
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            status: u.status,
+            verification: u.verification,
+            joined: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '',
+          }))
+        );
+      } else if (activeTab === 'houses') {
+        drawTable(
+          [
+            { key: 'title', label: 'Title', width: 2 },
+            { key: 'engineer', label: 'Engineer', width: 1.4 },
+            { key: 'type', label: 'Type', width: 1.2 },
+            { key: 'price', label: 'Price', width: 1 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Created', width: 1.2 },
+          ],
+          filteredHouses.map((h) => ({
+            title: h.title,
+            engineer: h.engineer?.name || 'Unknown',
+            type: formatHouseType(h.houseType),
+            price: `$${(h.price || 0).toLocaleString()}`,
+            status: h.status,
+            date: h.createdAt ? new Date(h.createdAt).toLocaleDateString() : '',
+          }))
+        );
+      } else if (activeTab === 'bookings') {
+        drawTable(
+          [
+            { key: 'design', label: 'Design', width: 1.8 },
+            { key: 'buyer', label: 'Buyer', width: 1.3 },
+            { key: 'amount', label: 'Amount Paid', width: 1.1 },
+            { key: 'commission', label: 'Commission', width: 1.1 },
+            { key: 'incomplete', label: 'Half?', width: 0.8 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Date', width: 1.1 },
+          ],
+          filteredTransactions.map((t) => {
+            const incomplete =
+              t.paymentPlan === 'half' &&
+              t.remainingStatus === 'pending' &&
+              Number(t.amountRemaining) > 0;
+            return {
+              design: t.design?.title || '—',
+              buyer: t.buyer?.name || '—',
+              amount: `$${(t.amountPaid || 0).toLocaleString()}`,
+              commission: `$${(t.commissionAmount || 0).toLocaleString()}`,
+              incomplete: incomplete ? 'Yes' : 'No',
+              status: t.paymentStatus || '—',
+              date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
+            };
+          })
+        );
+      } else if (activeTab === 'complaints') {
+        drawTable(
+          [
+            { key: 'id', label: 'ID', width: 1.4 },
+            { key: 'sender', label: 'Submitted By', width: 1.5 },
+            { key: 'category', label: 'Category', width: 1.2 },
+            { key: 'subject', label: 'Subject', width: 2 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Created', width: 1.2 },
+          ],
+          filteredComplaints.map((c) => ({
+            id: c._id,
+            sender: c.sender?.name || 'Unknown',
+            category: c.category || '',
+            subject: c.subject || '',
+            status: c.status,
+            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
+          }))
+        );
+      }
+
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Page ${i} of ${totalPages}`, pageW - margin, pageH - 14, { align: 'right' });
+      }
+
+      doc.save(`admin_report_${activeTab}_${Date.now()}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   return (
@@ -615,20 +915,24 @@ const AdminReports = () => {
               </select>
             </div>
 
-            {/* Custom Dates Fields */}
+            {/* Custom Dates: min = first activity, max = today (no future). Clearing is allowed. */}
             {dateRange === 'custom' && (
               <div className="flex items-center gap-2 animate-fadeIn">
                 <input 
                   type="date"
+                  min={earliestActivityDate || undefined}
+                  max={todayDateStr}
                   value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onChange={(e) => setCustomStartDate(clampCustomDate(e.target.value))}
                   className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-300 focus:outline-none"
                 />
                 <span className="text-slate-400 text-xs">-</span>
                 <input 
                   type="date"
+                  min={customStartDate || earliestActivityDate || undefined}
+                  max={todayDateStr}
                   value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onChange={(e) => setCustomEndDate(clampCustomDate(e.target.value))}
                   className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-300 focus:outline-none"
                 />
               </div>
@@ -736,10 +1040,11 @@ const AdminReports = () => {
               </button>
               <div className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-1.5 hidden group-hover:block z-30 w-44">
                 <button 
-                  onClick={handlePrint}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg"
+                  onClick={exportToPDF}
+                  disabled={exportingPdf}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg disabled:opacity-50"
                 >
-                  <Printer size={14} className="text-slate-500" /> Export PDF
+                  <Printer size={14} className="text-slate-500" /> {exportingPdf ? 'Generating…' : 'Export PDF'}
                 </button>
                 <button 
                   onClick={() => {
@@ -818,26 +1123,96 @@ const AdminReports = () => {
       {activeTab === 'overview' && (
         <div className="space-y-10">
           
-          {/* Summary Cards */}
+          {/* Summary Cards + filters for this section */}
           <div>
-            <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-4">Summary</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-4">
+              <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Summary</h3>
+              <div className="flex flex-wrap items-center gap-3 print:hidden">
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  <select
+                    value={dateRange}
+                    onChange={(e) => setDateRange(e.target.value)}
+                    className="pl-9 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                    <option value="thismonth">This Month</option>
+                    <option value="lastmonth">Last Month</option>
+                    <option value="thisyear">This Year</option>
+                    <option value="custom">Custom Date</option>
+                  </select>
+                </div>
+                {dateRange === 'custom' && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      min={earliestActivityDate || undefined}
+                      max={todayDateStr}
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(clampCustomDate(e.target.value))}
+                      className="px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-300"
+                    />
+                    <span className="text-slate-400 text-xs">-</span>
+                    <input
+                      type="date"
+                      min={customStartDate || earliestActivityDate || undefined}
+                      max={todayDateStr}
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(clampCustomDate(e.target.value))}
+                      className="px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-300"
+                    />
+                  </div>
+                )}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  <option value="All">All Design Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  <option value="All">All Roles</option>
+                  <option value="client">Client</option>
+                  <option value="engineer">Engineer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Users</p>
-                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(enrichedUsers.length).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(filteredUsers.length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Clients</p>
-                <h4 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{(fullStats.totalClients).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{(filteredUsers.filter(u => u.role === 'client').length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Engineers</p>
-                <h4 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{(fullStats.totalEngineers).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{(filteredUsers.filter(u => u.role === 'engineer').length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total House Designs</p>
-                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(fullStats.totalDesigns).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{(filteredHouses.length).toLocaleString()}</h4>
+              </div>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected Designs</p>
+                <h4 className="text-2xl font-black text-red-500 mt-1">
+                  {enrichedHouses.filter((h) => isWithinDateRange(h.createdAt) && h.status === 'rejected').length.toLocaleString()}
+                </h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Total Complaints</p>
@@ -845,11 +1220,11 @@ const AdminReports = () => {
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending Engineer Approvals</p>
-                <h4 className="text-2xl font-black text-amber-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && !u.isApproved).length).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-amber-500 mt-1">{(filteredUsers.filter(u => u.role === 'engineer' && !u.isApproved).length).toLocaleString()}</h4>
               </div>
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl shadow-sm hover:scale-[1.01] transition-transform">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Approved Engineers</p>
-                <h4 className="text-2xl font-black text-green-500 mt-1">{(enrichedUsers.filter(u => u.role === 'engineer' && u.isApproved).length).toLocaleString()}</h4>
+                <h4 className="text-2xl font-black text-green-500 mt-1">{(filteredUsers.filter(u => u.role === 'engineer' && u.isApproved).length).toLocaleString()}</h4>
               </div>
 
             </div>
@@ -1241,6 +1616,7 @@ const AdminReports = () => {
                       <th className="px-6 py-4.5">Buyer</th>
                       <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('amountPaid')}>Amount Paid</th>
                       <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('commissionAmount')}>Commission</th>
+                      <th className="px-6 py-4.5">Half / Incomplete?</th>
                       <th className="px-6 py-4.5">Status</th>
                       <th className="px-6 py-4.5 cursor-pointer hover:bg-slate-100/50" onClick={() => handleSort('createdAt')}>Date</th>
                     </tr>
@@ -1248,21 +1624,46 @@ const AdminReports = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">No payments found.</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">No payments found.</td>
                       </tr>
                     ) : (
-                      paginate(filteredTransactions).map((t) => (
+                      paginate(filteredTransactions).map((t) => {
+                        const incomplete =
+                          t.paymentPlan === 'half' &&
+                          t.remainingStatus === 'pending' &&
+                          Number(t.amountRemaining) > 0;
+                        return (
                         <tr key={t._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
                           <td className="px-6 py-4 font-bold text-slate-800 dark:text-white text-sm truncate max-w-[180px]">{t.design?.title || 'Deleted design'}</td>
                           <td className="px-6 py-4 text-xs font-semibold text-slate-500">{t.buyer?.name || 'Unknown'}</td>
-                          <td className="px-6 py-4 text-xs font-bold text-slate-800 dark:text-white">${(t.amountPaid || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-slate-800 dark:text-white">
+                            ${(t.amountPaid || 0).toLocaleString()}
+                            {t.totalPrice != null && t.paymentPlan === 'half' && (
+                              <span className="block text-[10px] font-medium text-slate-400">
+                                of ${Number(t.totalPrice).toLocaleString()}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-xs font-semibold text-slate-500">${(t.commissionAmount || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                                incomplete
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              }`}
+                              title={incomplete ? `Tahy due: $${Number(t.amountRemaining || 0).toLocaleString()}` : 'Fully paid'}
+                            >
+                              {incomplete ? 'Yes' : 'No'}
+                            </span>
+                          </td>
                           <td className="px-6 py-4">
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${t.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' : t.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.paymentStatus}</span>
                           </td>
                           <td className="px-6 py-4 text-xs text-slate-500 font-semibold">{new Date(t.createdAt).toLocaleDateString()}</td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

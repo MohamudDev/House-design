@@ -25,15 +25,22 @@ import UploadDesign from './pages/engineer/UploadDesign';
 import MyDesigns from './pages/engineer/MyDesigns';
 import Availability from './pages/engineer/Availability';
 import EngineerCollaborations from './pages/engineer/EngineerCollaborations';
+import EngineerProjects from './pages/engineer/EngineerProjects';
 import ProtectedRoute from './components/ProtectedRoute';
 import MessagesView from './components/MessagesView';
 import ClientNavbar from './components/client/ClientNavbar';
+import ClientWorkspaceNav from './components/client/ClientWorkspaceNav';
 import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
 import ClientPurchases from './pages/client/ClientPurchases';
 import ClientCollaborations from './pages/client/ClientCollaborations';
+import ClientProjects from './pages/client/ClientProjects';
+import CustomiseDesign from './pages/client/CustomiseDesign';
+import ClientCustomisations from './pages/client/ClientCustomisations';
 import ComplaintManager from './components/shared/ComplaintManager';
 import ManageComplaints from './pages/admin/ManageComplaints';
+import AdminProjects from './pages/admin/AdminProjects';
+import EngineerCustomisations from './pages/engineer/EngineerCustomisations';
 import InstallPWA from './components/InstallPWA';
 import { useEffect } from 'react';
 
@@ -102,6 +109,7 @@ function App() {
             <Route path="contacts" element={<ManageContacts />} />
             <Route path="complaints" element={<ManageComplaints />} />
             <Route path="collaborations" element={<AdminCollaborations />} />
+            <Route path="projects" element={<AdminProjects />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
@@ -119,6 +127,8 @@ function App() {
             <Route path="designs" element={<MyDesigns />} />
             <Route path="messages" element={<div className="h-full p-2 md:p-6"><MessagesView /></div>} />
             <Route path="collaborations" element={<EngineerCollaborations />} />
+            <Route path="projects" element={<EngineerProjects />} />
+            <Route path="customisations" element={<EngineerCustomisations />} />
             <Route path="complaints" element={<div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6"><ComplaintManager /></div>} />
             <Route path="availability" element={<Availability />} />
           </Route>
@@ -128,6 +138,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <ClientDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client-dashboard/customise/:designId" 
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <CustomiseDesign />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client-dashboard/customisations" 
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <ClientCustomisations />
               </ProtectedRoute>
             } 
           />
@@ -157,8 +183,9 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-                  <ClientNavbar />
+                  <ClientNavbar variant="workspace" />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-6">
+                    <ClientWorkspaceNav />
                     <ClientMyDesigns />
                   </div>
                 </div>
@@ -196,6 +223,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <ClientCollaborations />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client-dashboard/projects"  
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <ClientProjects />
               </ProtectedRoute>
             } 
           />

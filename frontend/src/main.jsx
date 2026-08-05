@@ -5,6 +5,9 @@ import './index.css'
 import axios from 'axios'
 import { registerSW } from 'virtual:pwa-register'
 
+// PWA build stamp — bump to force installed apps to fetch a new service worker.
+const PWA_BUILD = '20260805';
+
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
@@ -16,6 +19,7 @@ const updateSW = registerSW({
     console.log('PWA app ready to work offline');
   },
   onRegisteredSW(_swUrl, registration) {
+    console.info('PWA build', PWA_BUILD);
     registration?.update();
     setInterval(() => registration?.update(), 60 * 1000);
   }
