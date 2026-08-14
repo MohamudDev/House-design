@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Info } from 'lucide-react';
-import { statusColor, statusExplanation } from './statusExplanation';
+import { statusColor, statusExplanation, statusLabel } from './statusExplanation';
 
 /**
  * Status badge: click shows explanation only (does not open project or run actions).
@@ -8,6 +8,7 @@ import { statusColor, statusExplanation } from './statusExplanation';
 const StatusBadge = ({ status, className = '' }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const label = statusLabel[status] || status;
   const text = statusExplanation[status] || 'Project status information.';
 
   useEffect(() => {
@@ -32,7 +33,7 @@ const StatusBadge = ({ status, className = '' }) => {
         title="Click for explanation"
         aria-expanded={open}
       >
-        {status}
+        {label}
         <Info size={12} className="opacity-70" />
       </button>
       {open && (
@@ -41,7 +42,7 @@ const StatusBadge = ({ status, className = '' }) => {
           className="absolute left-0 top-full mt-1 z-30 w-64 sm:w-72 p-3 rounded-xl bg-slate-900 text-white text-xs leading-relaxed shadow-xl border border-slate-700"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="font-bold block mb-1">{status}</span>
+          <span className="font-bold block mb-1">{label}</span>
           {text}
         </span>
       )}

@@ -24,6 +24,9 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
     budgetEstimate: design.budgetEstimate || '',
     description: design.description || ''
   });
+  const [allowHalfSale, setAllowHalfSale] = useState(Boolean(design.allowHalfSale));
+  const [halfAPrice, setHalfAPrice] = useState(design.halfA?.price ?? '');
+  const [halfBPrice, setHalfBPrice] = useState(design.halfB?.price ?? '');
   
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(design.images && design.images.length > 0 ? `${design.images[0]}` : null);
@@ -60,6 +63,12 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
       }
     }
 
+    if (allowHalfSale && (!halfAPrice || Number(halfAPrice) < 0.01 || !halfBPrice || Number(halfBPrice) < 0.01)) {
+      setError('Set a price for Half A and Half B (at least $0.01 each).');
+      setLoading(false);
+      return;
+    }
+
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       const config = {
@@ -73,6 +82,11 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
       Object.keys(formData).forEach(key => {
         submitData.append(key, formData[key]);
       });
+      submitData.append('allowHalfSale', String(allowHalfSale));
+      if (allowHalfSale) {
+        submitData.append('halfA', JSON.stringify({ price: Number(halfAPrice) || 0 }));
+        submitData.append('halfB', JSON.stringify({ price: Number(halfBPrice) || 0 }));
+      }
       if (imageFile) {
         submitData.append('images', imageFile);
       }
@@ -146,7 +160,7 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
               >
                 <option value="Villa">Villa</option>
                 <option value="Apartment">Floor</option>
-                <option value="Townhouse">Townhouse</option>
+                <option value="Townhouse">Jinkad</option>
               </select>
             </div>
 
@@ -221,7 +235,7 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget (USD)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full House Price (USD)</label>
               <input 
                 type="number" 
                 name="budgetEstimate" 
@@ -232,6 +246,34 @@ const EditDesignModal = ({ design, onClose, onUpdateSuccess }) => {
                 onChange={handleInputChange} 
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" 
               />
+            </div>
+
+            <div className="col-span-1 md:col-span-2 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={allowHalfSale} onChange={(e) => setAllowHalfSale(e.target.checked)} className="w-4 h-4 rounded text-indigo-600" />
+                <span className="text-sm font-bold text-slate-800 dark:text-white">Allow half sale (split this house only)</span>
+              </label>
+              <p className="text-xs text-slate-500">
+                Splits this existing house into Half A / Half B. Only set half prices — rooms/size come from the house above.
+              </p>
+              {allowHalfSale && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Half A price</label>
+                      {design.halfA?.status === 'sold' && <span className="text-[10px] font-bold text-red-600">Sold</span>}
+                    </div>
+                    <input type="number" min="0.01" step="0.01" value={halfAPrice} onChange={(e) => setHalfAPrice(e.target.value)} className="w-full px-3 py-2 rounded-lg border text-sm font-bold dark:bg-slate-900 dark:text-white dark:border-slate-600" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Half B price</label>
+                      {design.halfB?.status === 'sold' && <span className="text-[10px] font-bold text-red-600">Sold</span>}
+                    </div>
+                    <input type="number" min="0.01" step="0.01" value={halfBPrice} onChange={(e) => setHalfBPrice(e.target.value)} className="w-full px-3 py-2 rounded-lg border text-sm font-bold dark:bg-slate-900 dark:text-white dark:border-slate-600" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="col-span-1 md:col-span-2">

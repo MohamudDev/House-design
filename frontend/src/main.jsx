@@ -4,9 +4,10 @@ import App from './App.jsx'
 import './index.css'
 import axios from 'axios'
 import { registerSW } from 'virtual:pwa-register'
+import { getApiBaseUrl } from './utils/apiBase'
 
 // PWA build stamp — bump to force installed apps to fetch a new service worker.
-const PWA_BUILD = '20260805';
+const PWA_BUILD = '20260805-cf';
 
 const updateSW = registerSW({
   immediate: true,
@@ -25,12 +26,12 @@ const updateSW = registerSW({
   }
 })
 
-const backendUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5004' : '');
+const backendUrl = getApiBaseUrl();
 axios.defaults.baseURL = backendUrl;
 
 const UPLOAD_KEYS = new Set([
   'images', 'model3D', 'plan2D', 'image', 'attachmentUrl', 'attachment',
-  'fileUrl', 'nationalIdUrl', 'certificateUrl', 'selfieUrl', 'url'
+  'fileUrl', 'nationalIdUrl', 'certificateUrl', 'selfieUrl', 'profileImage', 'url'
 ]);
 
 function absolutizeUploadUrl(value) {

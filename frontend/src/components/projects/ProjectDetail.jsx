@@ -83,6 +83,10 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
   const role = (user?.role || '').toLowerCase();
   const isEngineer = role === 'engineer';
   const isClient = role === 'client';
+  const hasUnpaidRemaining =
+    project?.transaction?.paymentPlan === 'half' &&
+    project?.transaction?.remainingStatus === 'pending' &&
+    Number(project?.transaction?.amountRemaining) > 0;
   const authConfig = () => ({
     headers: { Authorization: `Bearer ${JSON.parse(localStorage.getItem('userInfo') || '{}').token}` }
   });
@@ -140,7 +144,7 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
       clearScheduleErrors();
       setProgressForm((p) => ({
         ...p,
-        progressPercentage: data.data.progressPercentage || 25
+        progressPercentage: Number(data.data.progressPercentage) || 0
       }));
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to load project');
@@ -317,7 +321,9 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Project Tracking</h2>
             {project && (
               <p className="text-sm text-slate-500 mt-1">
-                {project.design?.title} · {project.client?.name} ↔ {project.engineer?.name}
+                {project.design?.title}
+                {project.purchaseType === 'halfA' ? ' · Half A' : project.purchaseType === 'halfB' ? ' · Half B' : project.purchaseType === 'full' ? ' · Full' : ''}
+                {' · '}{project.client?.name} ↔ {project.engineer?.name}
               </p>
             )}
           </div>
@@ -413,12 +419,12 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
                           </p>
                           {project.transaction.paymentPlan === 'half' && project.transaction.remainingStatus === 'pending' && (
                             <span className="inline-flex text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                              Tahy ${Number(project.transaction.amountRemaining || 0).toLocaleString()} due
+                              Remaining ${Number(project.transaction.amountRemaining || 0).toLocaleString()} due
                             </span>
                           )}
                           {project.transaction.paymentPlan === 'half' && project.transaction.remainingStatus === 'paid' && (
                             <span className="inline-flex text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                              Tahy paid
+                              Remaining paid
                             </span>
                           )}
                         </div>
@@ -496,24 +502,51 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
                     <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
                       <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Upload size={16} /> Update Progress</h3>
                       <select value={progressForm.progressPercentage} onChange={(e) => setProgressForm({ ...progressForm, progressPercentage: Number(e.target.value) })} className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm dark:text-white">
-                        {[0, 25, 50, 75, 100].map((n) => <option key={n} value={n}>{n}%</option>)}
+                        {[0, 25, 50, 75, 100]
+                          .filter((n) => n >= (Number(project.progressPercentage) || 0))
+                          .map((n) => <option key={n} value={n}>{n}%</option>)}
                       </select>
+                      <p className="text-[11px] text-slate-500">Progress can only move forward (cannot go back to a lower %).</p>
                       <textarea rows={3} value={progressForm.note} onChange={(e) => setProgressForm({ ...progressForm, note: e.target.value })} placeholder="Progress notes..." className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm dark:text-white" />
                       <input type="file" multiple onChange={(e) => setProgressForm({ ...progressForm, files: e.target.files })} className="block w-full text-xs text-slate-500" />
                       <div className="flex flex-wrap gap-2">
                         <button disabled={saving} onClick={handleProgress} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-60">Save Progress</button>
                         {project.progressPercentage === 100 && (
-                          <button disabled={saving} onClick={handleComplete} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center gap-1"><CheckCircle2 size={16} /> Mark as Completed</button>
+                          <button
+                            disabled={saving || hasUnpaidRemaining}
+                            onClick={handleComplete}
+                            title={hasUnpaidRemaining ? 'Client must pay remaining balance first' : undefined}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center gap-1"
+                          >
+                            <CheckCircle2 size={16} /> Mark as Completed
+                          </button>
                         )}
                       </div>
+                      {hasUnpaidRemaining && project.progressPercentage === 100 && (
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                          Remaining ${Number(project.transaction.amountRemaining).toLocaleString()} unpaid — client must pay before you can mark completed.
+                        </p>
+                      )}
                     </div>
                   )}
 
                   {isClient && project.projectStatus === 'Completed - Waiting for Client Confirmation' && (
                     <div className="p-4 rounded-2xl border border-purple-200 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-900/10 space-y-3">
-                      <h3 className="font-bold text-slate-900 dark:text-white">Confirm delivery or request revisions</h3>
+                      <h3 className="font-bold text-slate-900 dark:text-white">Confirm completion or request revisions</h3>
+                      {hasUnpaidRemaining && (
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                          Pay remaining ${Number(project.transaction.amountRemaining).toLocaleString()} in Purchases before confirming completion.
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-2">
-                        <button disabled={saving} onClick={handleConfirm} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60">Confirm Delivery</button>
+                        <button
+                          disabled={saving || hasUnpaidRemaining}
+                          onClick={handleConfirm}
+                          title={hasUnpaidRemaining ? 'Pay remaining balance first' : undefined}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60"
+                        >
+                          Confirm Completion
+                        </button>
                       </div>
                       <textarea rows={3} value={revisionNote} onChange={(e) => setRevisionNote(e.target.value)} placeholder="Describe revisions needed..." className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm dark:text-white" />
                       <button disabled={saving || !revisionNote.trim()} onClick={handleRevision} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold disabled:opacity-60 flex items-center gap-1"><RefreshCw size={16} /> Request Revisions</button>
@@ -543,7 +576,7 @@ const ProjectDetail = ({ projectId, onClose, onUpdated }) => {
                   {project.projectStatus === 'Delivered' && (
                     <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-sm flex items-start gap-2">
                       <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
-                      Delivery confirmed. This project is read-only — history remains available.
+                      Completion confirmed. This project is read-only — history remains available.
                     </div>
                   )}
                 </div>

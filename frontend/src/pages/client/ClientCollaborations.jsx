@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Search, FolderKanban, Eye } from 'lucide-react';
 import ClientNavbar from '../../components/client/ClientNavbar';
@@ -12,6 +13,7 @@ const statusColor = {
 };
 
 const ClientCollaborations = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -62,7 +64,20 @@ const ClientCollaborations = () => {
                   <h3 className="font-bold text-slate-900 dark:text-white">{item.design?.title || 'Design'}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusColor[item.status]}`}>{item.status}</span>
                 </div>
-                <p className="text-sm text-slate-500">Engineer: {item.engineer?.name}</p>
+                <p className="text-sm text-slate-500">
+                  Engineer:{' '}
+                  {item.engineer?._id ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/client-dashboard/engineer/${item.engineer._id}`)}
+                      className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                    >
+                      {item.engineer.name}
+                    </button>
+                  ) : (
+                    item.engineer?.name
+                  )}
+                </p>
               </div>
               <button onClick={() => setSelectedId(item._id)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold"><Eye size={16} /> Open</button>
             </div>

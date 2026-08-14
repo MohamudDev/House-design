@@ -118,13 +118,18 @@ exports.createCustomization = async (req, res) => {
       status: 'pending'
     });
 
-    await Notification.create({
-      recipient: design.engineer._id || design.engineer,
+    const engineerId = design.engineer._id || design.engineer;
+    const notification = await Notification.create({
+      recipient: engineerId,
       sender: req.user._id,
       type: 'general',
       title: 'New design customisation',
       message: `${req.user.name || 'A client'} requested changes for "${design.title}".`
     });
+
+    if (req.io) {
+      req.io.to(engineerId.toString()).emit('notification', notification);
+    }
 
     const full = await populateRequest(CustomizationRequest.findById(request._id));
     res.status(201).json({ success: true, data: full });
@@ -211,18 +216,31 @@ exports.respondCustomization = async (req, res) => {
 
     item.status = status;
     item.engineerNote = (engineerNote || '').trim();
+
+    if (status === 'declined' && !item.engineerNote) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a reason for declining so the client can see it.'
+      });
+    }
+
     await item.save();
 
-    await Notification.create({
+    const noteSuffix = item.engineerNote ? ` Note: ${item.engineerNote}` : '';
+    const notification = await Notification.create({
       recipient: item.client,
       sender: req.user._id,
       type: 'general',
       title: status === 'accepted' ? 'Customisation accepted' : 'Customisation declined',
       message:
         status === 'accepted'
-          ? 'Your design customisation request was accepted by the engineer.'
-          : `Your design customisation was declined.${item.engineerNote ? ` Note: ${item.engineerNote}` : ''}`
+          ? `Your design customisation request was accepted by the engineer.${noteSuffix}`
+          : `Your design customisation was declined. Reason: ${item.engineerNote}`
     });
+
+    if (req.io) {
+      req.io.to(item.client.toString()).emit('notification', notification);
+    }
 
     const full = await populateRequest(CustomizationRequest.findById(item._id));
     res.json({ success: true, data: full });

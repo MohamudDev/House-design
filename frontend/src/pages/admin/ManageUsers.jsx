@@ -107,7 +107,7 @@ const ManageUsers = () => {
   if (loading) return <div className="p-6 text-slate-500 dark:text-slate-400">Loading...</div>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 pb-24">
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Manage Users</h1>
@@ -154,10 +154,10 @@ const ManageUsers = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-11rem)]">
+          <table className="w-full text-left min-w-[920px]">
+            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
               <tr className="text-slate-500 dark:text-slate-400 text-sm font-semibold">
                 <th className="p-4">Name</th>
                 <th className="p-4">Email</th>
@@ -200,7 +200,7 @@ const ManageUsers = () => {
                     </div>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-nowrap whitespace-nowrap">
                       {user.role === 'engineer' && !user.isApproved && (
                         <>
                           <button 
@@ -257,6 +257,8 @@ const ManageUsers = () => {
               ))}
             </tbody>
           </table>
+          {/* Extra space so you can scroll a bit further down */}
+          <div className="h-16" aria-hidden="true" />
         </div>
       </div>
 

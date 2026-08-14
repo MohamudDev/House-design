@@ -7,7 +7,7 @@ const ClientProjects = () => (
     <ClientNavbar variant="workspace" />
     <div className="flex-1 max-w-7xl mx-auto w-full p-6">
       <ClientWorkspaceNav />
-      <ProjectsPage title="My Projects" subtitle="Track purchased designs from payment to delivery" />
+      <ProjectsPage title="My Projects" subtitle="Track purchased designs from payment to completion" />
     </div>
   </div>
 );

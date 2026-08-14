@@ -9,7 +9,7 @@ exports.getApprovedDesigns = async (req, res) => {
   try {
     console.log('DEBUG: getApprovedDesigns called by user:', req.user.id);
     const designs = await Design.find({ status: 'approved', isHidden: { $ne: true } })
-      .populate('engineer', 'name email bio specialization isAvailable workingHours')
+      .populate('engineer', 'name email bio specialization isAvailable workingHours profileImage')
       .sort('-createdAt');
 
     if (designs.length > 0) {
@@ -31,7 +31,7 @@ exports.getApprovedDesigns = async (req, res) => {
 exports.getDesignById = async (req, res) => {
   try {
     const design = await Design.findOne({ _id: req.params.id, status: 'approved', isHidden: { $ne: true } })
-      .populate('engineer', 'name email bio specialization isAvailable workingHours')
+      .populate('engineer', 'name email bio specialization isAvailable workingHours profileImage')
       .populate('ratings.user', 'name');
 
     if (!design) {
@@ -53,7 +53,7 @@ exports.getFavorites = async (req, res) => {
       match: { status: 'approved', isHidden: { $ne: true } },
       populate: {
         path: 'engineer',
-        select: 'name email bio specialization isAvailable workingHours'
+        select: 'name email bio specialization isAvailable workingHours profileImage'
       }
     });
 
@@ -91,6 +91,56 @@ exports.toggleFavorite = async (req, res) => {
       success: true,
       isFavorited: !isFavorited,
       favorites: user.favorites
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get public engineer profile + approved designs
+// @route   GET /api/client/engineers/:id
+// @access  Private (any authenticated user)
+exports.getEngineerPublicProfile = async (req, res) => {
+  try {
+    const engineer = await User.findOne({
+      _id: req.params.id,
+      role: 'engineer'
+    }).select('name email bio specialization isAvailable workingHours profileImage ratings createdAt isApproved');
+
+    if (!engineer) {
+      return res.status(404).json({ success: false, message: 'Engineer not found' });
+    }
+
+    const designs = await Design.find({
+      engineer: engineer._id,
+      status: 'approved',
+      isHidden: { $ne: true }
+    })
+      .select('title houseType rooms bathrooms budgetEstimate price images location createdAt')
+      .sort('-createdAt');
+
+    const ratingCount = engineer.ratings?.length || 0;
+    const satisfiedCount = (engineer.ratings || []).filter((r) => r.isSatisfied).length;
+    const satisfactionRate = ratingCount > 0 ? Math.round((satisfiedCount / ratingCount) * 100) : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        engineer: {
+          _id: engineer._id,
+          name: engineer.name,
+          email: engineer.email,
+          bio: engineer.bio,
+          specialization: engineer.specialization,
+          isAvailable: engineer.isAvailable,
+          workingHours: engineer.workingHours,
+          profileImage: engineer.profileImage,
+          createdAt: engineer.createdAt,
+          ratingCount,
+          satisfactionRate
+        },
+        designs
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

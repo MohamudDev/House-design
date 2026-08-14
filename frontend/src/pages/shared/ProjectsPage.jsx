@@ -4,7 +4,7 @@ import { FolderKanban, Eye, Search } from 'lucide-react';
 import ProjectDetail from '../../components/projects/ProjectDetail';
 import StatusBadge from '../../components/projects/StatusBadge';
 
-const ProjectsPage = ({ title = 'Projects', subtitle = 'Track delivery progress' }) => {
+const ProjectsPage = ({ title = 'Projects', subtitle = 'Track project progress' }) => {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +82,7 @@ const ProjectsPage = ({ title = 'Projects', subtitle = 'Track delivery progress'
           <option value="In Progress">In Progress</option>
           <option value="Revision Requested">Revision Requested</option>
           <option value="Completed - Waiting for Client Confirmation">Waiting Confirmation</option>
-          <option value="Delivered">Delivered</option>
+          <option value="Delivered">Confirmed</option>
         </select>
       </div>
 
@@ -95,16 +95,19 @@ const ProjectsPage = ({ title = 'Projects', subtitle = 'Track delivery progress'
           <div key={item._id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h3 className="font-bold text-slate-900 dark:text-white truncate">{item.design?.title || 'Design'}</h3>
+                <h3 className="font-bold text-slate-900 dark:text-white truncate">
+                  {item.design?.title || 'Design'}
+                  {item.purchaseType === 'halfA' ? ' · Half A' : item.purchaseType === 'halfB' ? ' · Half B' : ''}
+                </h3>
                 <StatusBadge status={item.projectStatus} />
                 {item.transaction?.paymentPlan === 'half' && item.transaction?.remainingStatus === 'pending' && (
                   <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                    Tahy ${Number(item.transaction.amountRemaining || 0).toLocaleString()}
+                    Remaining ${Number(item.transaction.amountRemaining || 0).toLocaleString()}
                   </span>
                 )}
                 {item.transaction?.paymentPlan === 'half' && item.transaction?.remainingStatus === 'paid' && (
                   <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    Tahy paid
+                    Remaining paid
                   </span>
                 )}
               </div>

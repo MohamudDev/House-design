@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5004' : '');
+import { getApiBaseUrl } from './apiBase';
+
+const API_BASE = getApiBaseUrl();
 
 /** Turn relative /uploads/... paths into absolute backend URLs. Cloudinary/https URLs pass through. */
 export function resolveMediaUrl(url) {
@@ -18,7 +20,7 @@ export function resolveMediaInObject(obj) {
 
   const keys = [
     'images', 'model3D', 'plan2D', 'image', 'attachmentUrl', 'attachment',
-    'fileUrl', 'nationalIdUrl', 'certificateUrl', 'selfieUrl', 'url'
+    'fileUrl', 'nationalIdUrl', 'certificateUrl', 'selfieUrl', 'profileImage', 'url'
   ];
 
   for (const key of keys) {

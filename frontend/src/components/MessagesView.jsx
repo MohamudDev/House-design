@@ -1,8 +1,10 @@
 import { useState, useEffect, useContext, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
 import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star, Mic, Volume2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 const EDIT_WINDOW_MS = 30 * 60 * 1000;
 
@@ -23,6 +25,7 @@ const formatMessageTime = (dateValue) => {
 const MessagesView = () => {
   const { user } = useContext(AuthContext);
   const { socket, fetchUnreadCount } = useContext(SocketContext);
+  const location = useLocation();
   
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,6 +123,26 @@ const MessagesView = () => {
     fetchInbox();
   }, [user]);
 
+  // Open engineer chat when coming from Customisations ("Chat with eng")
+  useEffect(() => {
+    const partnerId = location.state?.partnerId;
+    if (!partnerId || isLoading) return;
+
+    const existing = conversations.find((c) => c.partner?._id === partnerId);
+    if (existing?.partner) {
+      if (activePartner?._id !== partnerId) loadConversation(existing.partner);
+      return;
+    }
+
+    if (activePartner?._id !== partnerId) {
+      loadConversation({
+        _id: partnerId,
+        name: location.state?.partnerName || 'Engineer',
+        role: 'engineer'
+      });
+    }
+  }, [location.state?.partnerId, isLoading, conversations]);
+
   // Handle Socket Events
   useEffect(() => {
     if (socket) {
@@ -161,7 +184,7 @@ const MessagesView = () => {
 
   const fetchInbox = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/inbox`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/inbox`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
@@ -178,7 +201,7 @@ const MessagesView = () => {
   const loadConversation = async (partner) => {
     setActivePartner(partner);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${partner._id}`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/${partner._id}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
@@ -230,7 +253,7 @@ const MessagesView = () => {
       if (newMessage.trim()) formData.append('content', newMessage);
       if (selectedFile) formData.append('attachment', selectedFile);
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -273,7 +296,7 @@ const MessagesView = () => {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${id}`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +323,7 @@ const MessagesView = () => {
     if (!window.confirm('Hubaal ma tahay inaad tirtirto fariintan? (Are you sure you want to delete this message?)')) return;
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/${id}`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -320,7 +343,7 @@ const MessagesView = () => {
     if (feedbackSatisfied === null) return;
     setIsSubmittingFeedback(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/engineers/${activePartner._id}/rate`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/client/engineers/${activePartner._id}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

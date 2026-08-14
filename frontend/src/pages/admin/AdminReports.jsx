@@ -996,7 +996,7 @@ const AdminReports = () => {
                 <option value="All">All Types</option>
                 <option value="villa">Villa</option>
                 <option value="apartment">Floor</option>
-                <option value="townhouse">Townhouse</option>
+                <option value="townhouse">Jinkad</option>
                 <option value="commercial">Commercial</option>
               </select>
             )}
@@ -1652,7 +1652,7 @@ const AdminReports = () => {
                                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                                   : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                               }`}
-                              title={incomplete ? `Tahy due: $${Number(t.amountRemaining || 0).toLocaleString()}` : 'Fully paid'}
+                              title={incomplete ? `Remaining due: $${Number(t.amountRemaining || 0).toLocaleString()}` : 'Fully paid'}
                             >
                               {incomplete ? 'Yes' : 'No'}
                             </span>

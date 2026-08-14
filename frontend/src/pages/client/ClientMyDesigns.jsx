@@ -3,6 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { Box, Clock, AlertTriangle, Play } from 'lucide-react';
 import ModelViewer from '../../components/ModelViewer';
 import { format } from 'date-fns';
+import { getApiBaseUrl } from '../../utils/apiBase';
 
 const ClientMyDesigns = () => {
   const { user } = useContext(AuthContext);
@@ -17,7 +18,7 @@ const ClientMyDesigns = () => {
 
   const fetchClientDesigns = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/client-designs`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/client-designs`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         }

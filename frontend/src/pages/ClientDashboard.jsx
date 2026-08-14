@@ -7,6 +7,7 @@ import DesignViewModal from '../components/DesignViewModal';
 import ThemeToggle from '../components/ThemeToggle';
 import ClientNavbar from '../components/client/ClientNavbar';
 import { formatHouseType } from '../utils/houseType';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 import { NOTIFICATIONS_UPDATED_EVENT } from '../components/NotificationCenter';
 
 const ClientDashboard = () => {
@@ -184,6 +185,7 @@ const ClientDashboard = () => {
                 <option value="all">All Types</option>
                 <option value="villa">Villa</option>
                 <option value="apartment">Floor</option>
+                <option value="townhouse">Jinkad</option>
               </select>
             </div>
             <div>
@@ -289,12 +291,27 @@ const ClientDashboard = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-700">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800">
-                        {design.engineer?.name?.charAt(0)?.toUpperCase()}
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{design.engineer?.name}</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (design.engineer?._id) navigate(`/client-dashboard/engineer/${design.engineer._id}`);
+                      }}
+                      className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
+                    >
+                      {design.engineer?.profileImage ? (
+                        <img
+                          src={resolveMediaUrl(design.engineer.profileImage)}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover border border-indigo-200 dark:border-indigo-800"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800">
+                          {design.engineer?.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400">{design.engineer?.name}</span>
+                    </button>
                     
                     <div className="flex items-center gap-3">
                       <button

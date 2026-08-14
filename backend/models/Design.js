@@ -112,6 +112,32 @@ const designSchema = new mongoose.Schema({
     type: Number,
     default: 100 // Default price for fake payment simulation
   },
+  /** Allow selling house as Half A, Half B, or Full */
+  allowHalfSale: {
+    type: Boolean,
+    default: false
+  },
+  halfA: {
+    label: { type: String, default: 'Half A' },
+    rooms: { type: Number, default: 0 },
+    bathrooms: { type: Number, default: 0 },
+    area: { type: Number, default: 0 },
+    price: { type: Number, default: 0 },
+    status: { type: String, enum: ['available', 'sold'], default: 'available' }
+  },
+  halfB: {
+    label: { type: String, default: 'Half B' },
+    rooms: { type: Number, default: 0 },
+    bathrooms: { type: Number, default: 0 },
+    area: { type: Number, default: 0 },
+    price: { type: Number, default: 0 },
+    status: { type: String, enum: ['available', 'sold'], default: 'available' }
+  },
+  fullSaleStatus: {
+    type: String,
+    enum: ['available', 'sold'],
+    default: 'available'
+  },
   description: {
     type: String,
     required: [true, 'Please add a description']

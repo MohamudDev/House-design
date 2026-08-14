@@ -4,9 +4,20 @@ export const statusExplanation = {
   'Paid': 'Payment is confirmed. Waiting for the engineer to start work. No action is required from you right now.',
   'In Progress': 'The engineer has started work and is updating progress on this project.',
   'Revision Requested': 'The client requested changes. The engineer will continue work based on the revision notes.',
-  'Completed - Waiting for Client Confirmation': 'The engineer marked the work as complete. The client should confirm delivery or request revisions.',
-  'Delivered': 'Delivery was confirmed. This project is finished and read-only.',
+  'Completed - Waiting for Client Confirmation': 'The engineer marked the work as complete. The client should confirm completion or request revisions.',
+  'Delivered': 'Completion was confirmed. This project is finished and read-only.',
   'Cancelled': 'This project was cancelled and is no longer active.'
+};
+
+/** Display labels for statuses stored in the database */
+export const statusLabel = {
+  'Pending Payment': 'Pending Payment',
+  'Paid': 'Paid',
+  'In Progress': 'In Progress',
+  'Revision Requested': 'Revision Requested',
+  'Completed - Waiting for Client Confirmation': 'Completed - Waiting for Client Confirmation',
+  'Delivered': 'Confirmed',
+  'Cancelled': 'Cancelled'
 };
 
 export const statusColor = {

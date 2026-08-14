@@ -1,0 +1,8 @@
+name = "house-design-app"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+[vars]
+FRONTEND_ORIGIN = "https://frontend-kappa-five-gb74q3sgly.vercel.app"
+BACKEND_ORIGIN = "https://housedesignbackend-production.up.railway.app"

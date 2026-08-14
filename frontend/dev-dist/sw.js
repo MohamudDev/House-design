@@ -67,8 +67,11 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
+define(['./workbox-dd4885f9'], (function (workbox) { 'use strict';
 
+  workbox.setCacheNameDetails({
+    prefix: "house-design-v20260805"
+  });
   self.skipWaiting();
   workbox.clientsClaim();
   /**
@@ -81,7 +84,7 @@ define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "/index.html",
-    "revision": "0.d0ar8p45m9k"
+    "revision": "0.v1rth2pen6g"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {

@@ -19,6 +19,21 @@
     }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://housedesignbackend-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://housedesignbackend-production.up.railway.app/uploads/:path*"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://housedesignbackend-production.up.railway.app/socket.io/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

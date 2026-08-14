@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { ShoppingBag, Clock, CheckCircle, Layout, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
+import { getApiBaseUrl } from '../../utils/apiBase';
 import PaymentModal from '../../components/client/PaymentModal';
 
 const ClientPurchases = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,7 +20,7 @@ const ClientPurchases = () => {
 
   const fetchPurchases = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/purchases`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/client/purchases`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         }
@@ -90,7 +93,7 @@ const ClientPurchases = () => {
                   <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
                     {hasTahy ? (
                       <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wide shadow-sm">
-                        Tahy · ${Number(tx.amountRemaining).toLocaleString()}
+                        Remaining · ${Number(tx.amountRemaining).toLocaleString()}
                       </span>
                     ) : (
                       <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
@@ -99,13 +102,16 @@ const ClientPurchases = () => {
                     )}
                     {tahyPaid && (
                       <span className="bg-slate-900/80 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                        Tahy paid
+                        Remaining paid
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{tx.design?.title || 'Unknown Design'}</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                    {tx.design?.title || 'Unknown Design'}
+                    {tx.purchaseType === 'halfA' ? ' · Half A' : tx.purchaseType === 'halfB' ? ' · Half B' : tx.purchaseType === 'full' ? ' · Full' : ''}
+                  </h3>
 
                   <div className="flex justify-between items-center mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-1 text-slate-500"><Clock size={14}/> {format(new Date(tx.createdAt), 'MMM d, yyyy')}</span>
@@ -123,19 +129,26 @@ const ClientPurchases = () => {
                       onClick={() => setPayTx(tx)}
                       className="mb-4 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold"
                     >
-                      Pay Tahy ${Number(tx.amountRemaining).toLocaleString()}
+                      Pay Remaining ${Number(tx.amountRemaining).toLocaleString()}
                     </button>
                   )}
 
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const engId = tx.design?.engineer?._id;
+                      if (engId) navigate(`/client-dashboard/engineer/${engId}`);
+                    }}
+                    className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center gap-3 text-left w-full hover:opacity-80 transition-opacity"
+                  >
                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
                       {tx.design?.engineer?.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Engineer</p>
-                      <p className="text-sm font-bold text-slate-800 dark:text-white">{tx.design?.engineer?.name || 'Unknown'}</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-white hover:text-indigo-600">{tx.design?.engineer?.name || 'Unknown'}</p>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </div>
             );

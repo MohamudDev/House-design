@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Ruler, XCircle } from 'lucide-react';
+import { Ruler, XCircle, MessageSquare } from 'lucide-react';
 import ClientNavbar from '../../components/client/ClientNavbar';
 import ClientWorkspaceNav from '../../components/client/ClientWorkspaceNav';
+import { AuthContext } from '../../context/AuthContext';
+import { getApiBaseUrl } from '../../utils/apiBase';
 
 const statusStyle = {
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
@@ -13,10 +15,13 @@ const statusStyle = {
 };
 
 const ClientCustomisations = () => {
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
+  const [openingChat, setOpeningChat] = useState(false);
 
   const load = async () => {
     try {
@@ -47,6 +52,43 @@ const ClientCustomisations = () => {
       setSelected(null);
     } catch (err) {
       alert(err.response?.data?.message || 'Cancel failed');
+    }
+  };
+
+  const chatWithEngineer = async () => {
+    if (!selected?.engineer?._id) {
+      alert('Engineer not found for this request.');
+      return;
+    }
+    try {
+      setOpeningChat(true);
+      const token = user?.token || JSON.parse(localStorage.getItem('userInfo') || '{}').token;
+      if (selected.design?._id) {
+        await fetch(`${getApiBaseUrl()}/api/collaborations/ensure`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            designId: selected.design._id,
+            engineerId: selected.engineer._id
+          })
+        });
+      }
+      navigate('/client-dashboard/messages', {
+        state: {
+          partnerId: selected.engineer._id,
+          partnerName: selected.engineer.name
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      navigate('/client-dashboard/messages', {
+        state: { partnerId: selected.engineer._id, partnerName: selected.engineer.name }
+      });
+    } finally {
+      setOpeningChat(false);
     }
   };
 
@@ -165,10 +207,49 @@ const ClientCustomisations = () => {
               {selected.note && (
                 <p className="text-sm text-slate-600 dark:text-slate-300 italic border-l-2 border-indigo-400 pl-3">{selected.note}</p>
               )}
+
               {selected.engineerNote && (
-                <p className="text-sm text-slate-600 dark:text-slate-300 border-l-2 border-amber-400 pl-3">
-                  Engineer: {selected.engineerNote}
+                <div className="space-y-3">
+                  <div
+                    className={`rounded-xl border-l-4 p-3 ${
+                      selected.status === 'declined'
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                        : 'border-amber-400 bg-amber-50/50 dark:bg-amber-900/10'
+                    }`}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      {selected.status === 'declined' ? 'Decline reason' : 'Engineer note'}
+                    </p>
+                    <p className="text-sm text-slate-700 dark:text-slate-200">{selected.engineerNote}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={openingChat}
+                    onClick={chatWithEngineer}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold disabled:opacity-60"
+                  >
+                    <MessageSquare size={16} />
+                    {openingChat ? 'Opening...' : 'Chat with eng'}
+                  </button>
+                </div>
+              )}
+
+              {!selected.engineerNote && selected.status === 'declined' && (
+                <p className="text-sm text-red-600 dark:text-red-400 border-l-4 border-red-500 pl-3">
+                  This request was declined. No reason was provided.
                 </p>
+              )}
+
+              {!selected.engineerNote && ['accepted'].includes(selected.status) && selected.engineer?._id && (
+                <button
+                  type="button"
+                  disabled={openingChat}
+                  onClick={chatWithEngineer}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold disabled:opacity-60"
+                >
+                  <MessageSquare size={16} />
+                  {openingChat ? 'Opening...' : 'Chat with eng'}
+                </button>
               )}
 
               {selected.status === 'pending' && (

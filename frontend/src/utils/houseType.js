@@ -1,6 +1,10 @@
-// The "Apartment" house type is displayed to users as "Floor" across the app,
-// while the underlying stored/compared value in the database remains "Apartment".
+// Display labels differ from stored DB values for some house types.
+// - Apartment → Floor
+// - Townhouse → Jinkad
 export const formatHouseType = (type) => {
   if (!type) return type;
-  return type.toLowerCase() === 'apartment' ? 'Floor' : type;
+  const key = String(type).toLowerCase();
+  if (key === 'apartment') return 'Floor';
+  if (key === 'townhouse') return 'Jinkad';
+  return type;
 };

@@ -5,10 +5,12 @@ import { AuthContext } from '../context/AuthContext';
 import { ShieldAlert, Menu } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import NotificationCenter from '../components/NotificationCenter';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 const EngineerDashboard = () => {
   const { user } = useContext(AuthContext);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const avatarUrl = user?.profileImage ? resolveMediaUrl(user.profileImage) : '';
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-300">
@@ -31,9 +33,17 @@ const EngineerDashboard = () => {
             <ThemeToggle className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 mr-1 md:mr-2" />
             <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">Welcome back,</span>
             <span className="hidden sm:inline font-bold text-slate-900 dark:text-white">{user?.name}</span>
-            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-800">
-              {user?.name?.charAt(0)?.toUpperCase()}
-            </div>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={user?.name || 'Profile'}
+                className="w-10 h-10 rounded-full object-cover border border-indigo-200 dark:border-indigo-800"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-800">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </div>
+            )}
           </div>
         </header>
 

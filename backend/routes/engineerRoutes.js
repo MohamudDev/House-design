@@ -32,7 +32,7 @@ router.delete('/designs/:id', deleteDesign);
 router.get('/stats', getEngineerStats);
 router.get('/ping', (req, res) => res.json({ success: true, message: 'Engineer API is reachable' }));
 router.get('/profile', getProfile);
-router.put('/profile', updateProfile);
+router.put('/profile', upload.single('profileImage'), updateProfile);
 
 // Wallet & Withdrawal Routes
 router.post('/withdraw', requestWithdrawal);

@@ -23,7 +23,7 @@ import EngineerOverview from './pages/engineer/EngineerOverview';
 import EngineerReports from './pages/engineer/EngineerReports';
 import UploadDesign from './pages/engineer/UploadDesign';
 import MyDesigns from './pages/engineer/MyDesigns';
-import Availability from './pages/engineer/Availability';
+import EngineerProfile from './pages/engineer/EngineerProfile';
 import EngineerCollaborations from './pages/engineer/EngineerCollaborations';
 import EngineerProjects from './pages/engineer/EngineerProjects';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,6 +37,7 @@ import ClientCollaborations from './pages/client/ClientCollaborations';
 import ClientProjects from './pages/client/ClientProjects';
 import CustomiseDesign from './pages/client/CustomiseDesign';
 import ClientCustomisations from './pages/client/ClientCustomisations';
+import ClientEngineerProfile from './pages/client/ClientEngineerProfile';
 import ComplaintManager from './components/shared/ComplaintManager';
 import ManageComplaints from './pages/admin/ManageComplaints';
 import AdminProjects from './pages/admin/AdminProjects';
@@ -130,7 +131,7 @@ function App() {
             <Route path="projects" element={<EngineerProjects />} />
             <Route path="customisations" element={<EngineerCustomisations />} />
             <Route path="complaints" element={<div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6"><ComplaintManager /></div>} />
-            <Route path="availability" element={<Availability />} />
+            <Route path="profile" element={<EngineerProfile />} />
           </Route>
 
           <Route 
@@ -164,6 +165,14 @@ function App() {
                 <MyFavorites />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/client-dashboard/engineer/:id"
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <ClientEngineerProfile />
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/client-dashboard/messages"  

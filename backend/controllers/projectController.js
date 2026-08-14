@@ -16,8 +16,39 @@ const populateProject = [
 
 function assertNotReadOnly(project) {
   if (project.isReadOnly || project.projectStatus === 'Delivered') {
-    const err = new Error('This project is delivered and read-only');
+    const err = new Error('This project is confirmed and read-only');
     err.statusCode = 403;
+    throw err;
+  }
+}
+
+/** Block complete/confirmation while half-payment remaining balance is unpaid. */
+async function assertNoUnpaidRemaining(project) {
+  const Transaction = require('../models/Transaction');
+  let tx = project.transaction;
+  if (tx && typeof tx === 'object' && tx.remainingStatus != null) {
+    // already populated
+  } else if (tx) {
+    tx = await Transaction.findById(tx).select('paymentPlan remainingStatus amountRemaining');
+  } else {
+    tx = await Transaction.findOne({
+      buyer: project.client,
+      engineer: project.engineer,
+      design: project.design,
+      paymentStatus: 'completed'
+    }).sort('-createdAt').select('paymentPlan remainingStatus amountRemaining');
+  }
+
+  if (
+    tx &&
+    tx.paymentPlan === 'half' &&
+    tx.remainingStatus === 'pending' &&
+    Number(tx.amountRemaining) > 0
+  ) {
+    const err = new Error(
+      `Remaining balance of $${Number(tx.amountRemaining).toFixed(2)} must be paid before completing or confirming this project.`
+    );
+    err.statusCode = 400;
     throw err;
   }
 }
@@ -103,6 +134,10 @@ function validateScheduleDates(expectedStartDate, expectedCompletionDate) {
 }
 
 async function createPaidProjectFromTransaction({ transaction, design, io, isHalfPayment = false }) {
+  const { purchaseTypeLabel } = require('../utils/splitSale');
+  const purchaseType = transaction.purchaseType || 'full';
+  const optionLabel = purchaseTypeLabel(purchaseType);
+
   let project = await Project.findOne({ transaction: transaction._id });
   if (project) return project;
 
@@ -110,6 +145,7 @@ async function createPaidProjectFromTransaction({ transaction, design, io, isHal
     client: transaction.buyer,
     engineer: transaction.engineer,
     design: transaction.design,
+    purchaseType,
     projectStatus: { $nin: ['Delivered', 'Cancelled'] }
   });
 
@@ -117,6 +153,7 @@ async function createPaidProjectFromTransaction({ transaction, design, io, isHal
     project.transaction = transaction._id;
     project.paymentStatus = 'completed';
     project.projectStatus = 'Paid';
+    project.purchaseType = purchaseType;
     await project.save();
   } else {
     project = await Project.create({
@@ -124,6 +161,7 @@ async function createPaidProjectFromTransaction({ transaction, design, io, isHal
       engineer: transaction.engineer,
       design: transaction.design,
       transaction: transaction._id,
+      purchaseType,
       paymentStatus: 'completed',
       projectStatus: 'Paid',
       progressPercentage: 0
@@ -136,8 +174,8 @@ async function createPaidProjectFromTransaction({ transaction, design, io, isHal
     progressPercentage: 0,
     action: isHalfPayment ? 'Half payment received (Tahy)' : 'Payment received',
     note: isHalfPayment
-      ? `Client paid 50%. Remaining $${Number(transaction.amountRemaining || 0).toFixed(2)} marked as Tahy.`
-      : 'Client completed payment. Project is ready to start.',
+      ? `Client paid 50% for ${optionLabel}. Remaining $${Number(transaction.amountRemaining || 0).toFixed(2)} marked as Tahy.`
+      : `Client completed payment for ${optionLabel}. Project is ready to start.`,
     actor: transaction.buyer,
     actorRole: 'client'
   });
@@ -149,8 +187,8 @@ async function createPaidProjectFromTransaction({ transaction, design, io, isHal
     type: 'payment_received',
     title: isHalfPayment ? 'Half payment (Tahy) received' : 'New paid project',
     message: isHalfPayment
-      ? `A client paid half for "${design?.title || 'a design'}". Remaining balance is Tahy.`
-      : `A client paid for "${design?.title || 'a design'}". Open Projects to start work.`,
+      ? `A client paid half for "${design?.title || 'a design'}" (${optionLabel}). Remaining balance is Tahy.`
+      : `A client paid for "${design?.title || 'a design'}" (${optionLabel}). Open Projects to start work.`,
     io
   });
 
@@ -366,6 +404,13 @@ exports.updateProgress = async (req, res) => {
       return res.status(400).json({ message: 'Progress can only be updated while In Progress or Revision Requested' });
     }
 
+    const current = Number(project.progressPercentage) || 0;
+    if (percentage < current) {
+      return res.status(400).json({
+        message: `Progress cannot go backwards. Current progress is ${current}%. Choose ${current}% or higher.`
+      });
+    }
+
     const files = [];
     const uploaded = req.files || [];
     for (const file of uploaded) {
@@ -443,6 +488,8 @@ exports.markCompleted = async (req, res) => {
       return res.status(400).json({ message: 'Project cannot be marked completed from current status' });
     }
 
+    await assertNoUnpaidRemaining(project);
+
     project.projectStatus = 'Completed - Waiting for Client Confirmation';
     project.progressPercentage = 100;
     await project.save();
@@ -463,7 +510,7 @@ exports.markCompleted = async (req, res) => {
       project: project._id,
       type: 'project_completed',
       title: 'Project completed',
-      message: `"${project.design?.title || 'Your project'}" is complete. Please confirm delivery or request revisions.`,
+      message: `"${project.design?.title || 'Your project'}" is complete. Please confirm completion or request revisions.`,
       io: req.io
     });
 
@@ -474,19 +521,21 @@ exports.markCompleted = async (req, res) => {
   }
 };
 
-// @desc    Client confirms delivery
+// @desc    Client confirms project completion
 // @route   POST /api/projects/:id/confirm-delivery
 exports.confirmDelivery = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id).populate('design', 'title');
     if (!project) return res.status(404).json({ message: 'Project not found' });
     if (project.client.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only the project owner can confirm delivery' });
+      return res.status(403).json({ message: 'Only the project owner can confirm completion' });
     }
     assertNotReadOnly(project);
     if (project.projectStatus !== 'Completed - Waiting for Client Confirmation') {
       return res.status(400).json({ message: 'Project is not awaiting confirmation' });
     }
+
+    await assertNoUnpaidRemaining(project);
 
     project.projectStatus = 'Delivered';
     project.actualCompletionDate = new Date();
@@ -497,8 +546,8 @@ exports.confirmDelivery = async (req, res) => {
       projectId: project._id,
       status: 'Delivered',
       progressPercentage: 100,
-      action: 'Delivery confirmed',
-      note: req.body.note || 'Client confirmed delivery',
+      action: 'Completion confirmed',
+      note: req.body.note || 'Client confirmed project completion',
       actor: req.user._id,
       actorRole: 'client'
     });
@@ -508,15 +557,15 @@ exports.confirmDelivery = async (req, res) => {
       sender: req.user._id,
       project: project._id,
       type: 'delivery_confirmed',
-      title: 'Delivery confirmed',
-      message: `Client confirmed delivery for "${project.design?.title || 'the project'}".`,
+      title: 'Completion confirmed',
+      message: `Client confirmed completion for "${project.design?.title || 'the project'}".`,
       io: req.io
     });
 
     const data = await Project.findById(project._id).populate(populateProject);
-    res.json({ success: true, data, message: 'Delivery confirmed' });
+    res.json({ success: true, data, message: 'Completion confirmed' });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to confirm delivery' });
+    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to confirm completion' });
   }
 };
 
@@ -582,7 +631,7 @@ exports.addClientComment = async (req, res) => {
       return res.status(403).json({ message: 'Only the project owner can comment' });
     }
     if (project.projectStatus === 'Delivered' || project.isReadOnly) {
-      return res.status(403).json({ message: 'Delivered projects are read-only' });
+      return res.status(403).json({ message: 'Confirmed projects are read-only' });
     }
 
     project.clientComments.push({ content, createdAt: new Date() });

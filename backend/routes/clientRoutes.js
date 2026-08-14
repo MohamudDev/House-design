@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getApprovedDesigns, getDesignById, getFavorites, toggleFavorite, rateEngineer, rateDesign } = require('../controllers/clientController');
+const { getApprovedDesigns, getDesignById, getFavorites, toggleFavorite, rateEngineer, rateDesign, getEngineerPublicProfile } = require('../controllers/clientController');
 const { checkout, getPurchases, payRemaining } = require('../controllers/paymentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -8,6 +8,7 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 router.use(protect);
 
 router.get('/designs/:id', getDesignById);
+router.get('/engineers/:id', getEngineerPublicProfile);
 
 router.use(authorize('client'));
 

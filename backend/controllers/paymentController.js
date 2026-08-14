@@ -3,6 +3,12 @@ const Design = require('../models/Design');
 const User = require('../models/User');
 const axios = require('axios');
 const { createPaidProjectFromTransaction } = require('./projectController');
+const {
+  normalizePurchaseType,
+  purchaseTypeLabel,
+  getSaleOption,
+  markDesignSoldForPurchase
+} = require('../utils/splitSale');
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
@@ -42,8 +48,9 @@ exports.checkout = async (req, res) => {
   try {
     const designId = req.params.designId;
     const buyerId = req.user.id;
-    const { accountNo, paymentPlan: planRaw } = req.body;
+    const { accountNo, paymentPlan: planRaw, purchaseType: purchaseTypeRaw } = req.body;
     const paymentPlan = planRaw === 'half' ? 'half' : 'full';
+    const purchaseType = normalizePurchaseType(purchaseTypeRaw);
 
     if (!accountNo) {
       return res.status(400).json({ success: false, message: 'Mobile Money Account Number is required' });
@@ -58,34 +65,59 @@ exports.checkout = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You cannot buy your own design' });
     }
 
-    const existingTransaction = await Transaction.findOne({
+    const sale = getSaleOption(design, purchaseType);
+    if (!sale.ok) {
+      return res.status(400).json({ success: false, message: sale.message });
+    }
+
+    const existingSameOption = await Transaction.findOne({
       buyer: buyerId,
       design: designId,
+      purchaseType: sale.purchaseType,
       paymentStatus: 'completed'
     });
-    if (existingTransaction) {
-      if (existingTransaction.remainingStatus === 'pending' && existingTransaction.amountRemaining > 0) {
+    if (existingSameOption) {
+      if (existingSameOption.remainingStatus === 'pending' && existingSameOption.amountRemaining > 0) {
         return res.status(400).json({
           success: false,
           message: 'Half payment already made. Please pay the remaining Tahy balance.',
-          transactionId: existingTransaction._id,
-          amountRemaining: existingTransaction.amountRemaining
+          transactionId: existingSameOption._id,
+          amountRemaining: existingSameOption.amountRemaining
         });
       }
-      return res.status(400).json({ success: false, message: 'You have already purchased this design' });
+      return res.status(400).json({
+        success: false,
+        message: `You have already purchased ${purchaseTypeLabel(sale.purchaseType)} of this design`
+      });
     }
 
-    const totalPrice = round2(design.price || 100);
+    if (sale.purchaseType === 'full') {
+      const ownedHalf = await Transaction.findOne({
+        buyer: buyerId,
+        design: designId,
+        purchaseType: { $in: ['halfA', 'halfB'] },
+        paymentStatus: 'completed'
+      });
+      if (ownedHalf) {
+        return res.status(400).json({
+          success: false,
+          message: 'You already own a half of this design. Buy the other half instead of full.'
+        });
+      }
+    }
+
+    const totalPrice = round2(sale.totalPrice);
     const amountPaid = paymentPlan === 'half' ? round2(totalPrice / 2) : totalPrice;
     const amountRemaining = paymentPlan === 'half' ? round2(totalPrice - amountPaid) : 0;
+    const optionLabel = purchaseTypeLabel(sale.purchaseType);
 
     const waafiData = await chargeWaafi({
       accountNo,
       amount: amountPaid,
       description:
         paymentPlan === 'half'
-          ? `Half payment (Tahy) for 3D Design: ${design.title}`
-          : `Purchase of 3D Design: ${design.title}`
+          ? `Half payment (Tahy) for ${optionLabel}: ${design.title}`
+          : `Purchase of ${optionLabel}: ${design.title}`
     });
 
     if (waafiData && waafiData.responseCode === '2001') {
@@ -96,6 +128,7 @@ exports.checkout = async (req, res) => {
         buyer: buyerId,
         engineer: design.engineer._id,
         design: designId,
+        purchaseType: sale.purchaseType,
         totalPrice,
         amountPaid,
         amountRemaining,
@@ -111,7 +144,7 @@ exports.checkout = async (req, res) => {
         $inc: { walletBalance: engineerAmount }
       });
 
-      await Design.findByIdAndUpdate(designId, { $inc: { salesCount: 1 } });
+      await markDesignSoldForPurchase(design, sale.purchaseType);
 
       try {
         await createPaidProjectFromTransaction({

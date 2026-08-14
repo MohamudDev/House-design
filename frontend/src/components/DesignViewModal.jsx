@@ -5,7 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import ModelViewer from './ModelViewer';
 import PaymentModal from './client/PaymentModal';
 import { formatHouseType } from '../utils/houseType';
-import { resolveMediaInObject } from '../utils/mediaUrl';
+import { resolveMediaInObject, resolveMediaUrl } from '../utils/mediaUrl';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const { user } = useContext(AuthContext);
@@ -17,6 +18,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
   const [errorMessage, setErrorMessage] = useState('');
   
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [purchaseType, setPurchaseType] = useState('full');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const [viewMode, setViewMode] = useState('model');
@@ -38,7 +40,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
     const fetchDesignDetails = async () => {
       try {
         if (!initialDesign || !initialDesign._id) return;
-        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/designs/${initialDesign._id}`, {
+        const res = await fetch(`${getApiBaseUrl()}/api/client/designs/${initialDesign._id}`, {
           headers: {
             'Authorization': `Bearer ${user.token}`
           }
@@ -64,7 +66,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
 
     try {
       setSubmittingRating(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/client/designs/${design._id}/rate`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/client/designs/${design._id}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +102,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
     setErrorMessage('');
     try {
       if (user?.token && design?.engineer?._id && design?._id) {
-        await fetch(`${import.meta.env.VITE_API_URL || ''}/api/collaborations/ensure`, {
+        await fetch(`${getApiBaseUrl()}/api/collaborations/ensure`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -123,7 +125,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
 
     try {
       setIsSending(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -357,6 +359,30 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
               </div>
             </div>
 
+            {design.allowHalfSale && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20">
+                  <p className="text-[10px] font-bold uppercase text-indigo-500">{design.halfA?.label || 'Half A'}</p>
+                  <p className="text-sm font-bold dark:text-white">${Number(design.halfA?.price || 0).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">{design.halfA?.status === 'sold' ? 'Sold' : 'Available'}</p>
+                </div>
+                <div className="p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20">
+                  <p className="text-[10px] font-bold uppercase text-indigo-500">{design.halfB?.label || 'Half B'}</p>
+                  <p className="text-sm font-bold dark:text-white">${Number(design.halfB?.price || 0).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">{design.halfB?.status === 'sold' ? 'Sold' : 'Available'}</p>
+                </div>
+                <div className="p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <p className="text-[10px] font-bold uppercase text-emerald-600">Full house</p>
+                  <p className="text-sm font-bold dark:text-white">${Number(design.price || design.budgetEstimate || 0).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">
+                    {design.fullSaleStatus === 'sold' || design.halfA?.status === 'sold' || design.halfB?.status === 'sold'
+                      ? 'Unavailable'
+                      : 'Available'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-3">
                 <Info size={16} />
@@ -529,6 +555,19 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                   {design.engineer?.isAvailable ? '● Available' : '○ Away'}
                 </span>
               </div>
+
+              {user?.role === 'client' && design.engineer?._id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/client-dashboard/engineer/${design.engineer._id}`);
+                  }}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                >
+                  View full profile →
+                </button>
+              )}
               
               {design.engineer?.specialization && (
                 <p className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl inline-block">
@@ -547,15 +586,30 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
 
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-auto">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold">
-                    {design.engineer?.name?.charAt(0)?.toUpperCase() || 'E'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (user?.role === 'client' && design.engineer?._id) {
+                      onClose();
+                      navigate(`/client-dashboard/engineer/${design.engineer._id}`);
+                    }
+                  }}
+                  className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold overflow-hidden">
+                    {design.engineer?.profileImage ? (
+                      <img src={resolveMediaUrl(design.engineer.profileImage)} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      design.engineer?.name?.charAt(0)?.toUpperCase() || 'E'
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Designed by</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-white">{design.engineer?.name || 'Engineer'}</p>
+                    <p className={`text-sm font-bold text-slate-800 dark:text-white ${user?.role === 'client' ? 'hover:text-indigo-600 dark:hover:text-indigo-400' : ''}`}>
+                      {design.engineer?.name || 'Engineer'}
+                    </p>
                   </div>
-                </div>
+                </button>
                 {user?.role === 'client' && (
                   <div className="flex gap-2 flex-wrap justify-end">
                     <button 
@@ -579,13 +633,68 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                     )}
                     
                     {!paymentSuccess ? (
-                      <button 
-                        onClick={() => setShowPaymentModal(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 transition-all active:scale-95"
-                      >
-                        <ShoppingCart size={16} />
-                        Buy ${(design.price || 100).toLocaleString()}
-                      </button>
+                      design.allowHalfSale ? (
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                          <p className="text-[10px] font-bold uppercase text-slate-400">Buy options</p>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              {
+                                type: 'halfA',
+                                label: design.halfA?.label || 'Half A',
+                                price: design.halfA?.price,
+                                sold: design.halfA?.status === 'sold' || design.fullSaleStatus === 'sold'
+                              },
+                              {
+                                type: 'halfB',
+                                label: design.halfB?.label || 'Half B',
+                                price: design.halfB?.price,
+                                sold: design.halfB?.status === 'sold' || design.fullSaleStatus === 'sold'
+                              },
+                              {
+                                type: 'full',
+                                label: 'Full house',
+                                price: design.price || design.budgetEstimate,
+                                sold:
+                                  design.fullSaleStatus === 'sold' ||
+                                  design.halfA?.status === 'sold' ||
+                                  design.halfB?.status === 'sold'
+                              }
+                            ].map((opt) => (
+                              <button
+                                key={opt.type}
+                                type="button"
+                                disabled={opt.sold || !opt.price}
+                                onClick={() => {
+                                  setPurchaseType(opt.type);
+                                  setShowPaymentModal(true);
+                                }}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                                  opt.sold
+                                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 cursor-not-allowed'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 active:scale-95'
+                                }`}
+                              >
+                                <ShoppingCart size={14} />
+                                {opt.sold ? `${opt.label} · Sold` : `${opt.label} · $${Number(opt.price || 0).toLocaleString()}`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setPurchaseType('full');
+                            setShowPaymentModal(true);
+                          }}
+                          disabled={design.fullSaleStatus === 'sold'}
+                          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <ShoppingCart size={16} />
+                          {design.fullSaleStatus === 'sold'
+                            ? 'Sold'
+                            : `Buy $${(design.price || 100).toLocaleString()}`}
+                        </button>
+                      )
                     ) : (
                       <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-lg text-sm font-bold border border-emerald-100 dark:border-emerald-800">
                         Purchased
@@ -645,7 +754,8 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
 
       {showPaymentModal && (
         <PaymentModal 
-          design={design} 
+          design={design}
+          purchaseType={purchaseType}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={(transaction) => {
             setShowPaymentModal(false);

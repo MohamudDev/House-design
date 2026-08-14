@@ -15,6 +15,11 @@ const projectSchema = new mongoose.Schema({
   engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   design: { type: mongoose.Schema.Types.ObjectId, ref: 'Design', required: true },
   transaction: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null },
+  purchaseType: {
+    type: String,
+    enum: ['full', 'halfA', 'halfB'],
+    default: 'full'
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'completed', 'failed'],

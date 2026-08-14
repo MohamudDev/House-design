@@ -40,6 +40,10 @@ const UploadDesign = () => {
     visitorParking: false,
     parkingDescription: ''
   });
+
+  const [allowHalfSale, setAllowHalfSale] = useState(false);
+  const [halfAPrice, setHalfAPrice] = useState('');
+  const [halfBPrice, setHalfBPrice] = useState('');
   
   const [units, setUnits] = useState([]);
   
@@ -169,6 +173,14 @@ const UploadDesign = () => {
       return;
     }
 
+    if (allowHalfSale) {
+      if (!halfAPrice || Number(halfAPrice) < 0.01 || !halfBPrice || Number(halfBPrice) < 0.01) {
+        setLoading(false);
+        setMessage({ type: 'error', text: 'Set a price for Half A and Half B (at least $0.01 each).' });
+        return;
+      }
+    }
+
     const submitData = new FormData();
     submitData.append('title', formData.title);
     submitData.append('houseType', formData.houseType);
@@ -180,6 +192,11 @@ const UploadDesign = () => {
     submitData.append('carParking', formData.carParking);
     submitData.append('budgetEstimate', formData.budgetEstimate);
     submitData.append('description', formData.description);
+    submitData.append('allowHalfSale', String(allowHalfSale));
+    if (allowHalfSale) {
+      submitData.append('halfA', JSON.stringify({ price: Number(halfAPrice) || 0 }));
+      submitData.append('halfB', JSON.stringify({ price: Number(halfBPrice) || 0 }));
+    }
 
     if (formData.houseType !== 'Apartment') {
       submitData.append('houseLength', formData.houseLength);
@@ -242,6 +259,9 @@ const UploadDesign = () => {
       
       // Reset form
       setFormData({ title: '', houseType: 'Villa', rooms: '', bathrooms: '', kitchens: '', livingRooms: '', masterRooms: '', houseLength: '', houseWidth: '', carParking: false, budgetEstimate: '', description: '', location: '', numberOfFloors: '', totalUnits: '', parkingType: 'Outdoor', vehicleType: [], totalParkingSpaces: '', parkingLocation: 'Ground Floor', reservedParking: false, visitorParking: false, parkingDescription: '' });
+      setAllowHalfSale(false);
+      setHalfAPrice('');
+      setHalfBPrice('');
       setFiles({ model3D: null, images: null });
       setInteriorGallery([]);
       setUnits([]);
@@ -315,7 +335,7 @@ const UploadDesign = () => {
               <select name="houseType" value={formData.houseType} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow">
                 <option value="Villa">Villa</option>
                 <option value="Apartment">Floor</option>
-                <option value="Townhouse">Townhouse</option>
+                <option value="Townhouse">Jinkad</option>
               </select>
             </div>
 
@@ -381,8 +401,54 @@ const UploadDesign = () => {
             )}
 
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget (USD)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estimated Build Budget / Full House Price (USD)</label>
               <input type="number" name="budgetEstimate" required min="0.01" step="0.01" value={formData.budgetEstimate} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow" placeholder="e.g. 0.01" />
+              <p className="text-xs text-slate-500 mt-1">This is the price when the client buys the full house.</p>
+            </div>
+
+            <div className="col-span-1 md:col-span-2 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allowHalfSale}
+                  onChange={(e) => setAllowHalfSale(e.target.checked)}
+                  className="w-4 h-4 rounded text-indigo-600"
+                />
+                <span className="text-sm font-bold text-slate-800 dark:text-white">Allow half sale (split this house only)</span>
+              </label>
+              <p className="text-xs text-slate-500">
+                Splits the same house above into Half A and Half B. No new design — only set half prices. Client can still buy full.
+              </p>
+              {allowHalfSale && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Half A price (USD)</label>
+                    <input
+                      type="number"
+                      required={allowHalfSale}
+                      min="0.01"
+                      step="0.01"
+                      value={halfAPrice}
+                      onChange={(e) => setHalfAPrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-bold dark:text-white"
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Half B price (USD)</label>
+                    <input
+                      type="number"
+                      required={allowHalfSale}
+                      min="0.01"
+                      step="0.01"
+                      value={halfBPrice}
+                      onChange={(e) => setHalfBPrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-bold dark:text-white"
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="col-span-1 md:col-span-2">

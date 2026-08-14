@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Building, Activity, DollarSign, UploadCloud, MessageSquare, CheckCircle,
-  XCircle, Clock, Calendar, Search, Download, FileText, FileSpreadsheet, Printer,
-  ChevronLeft, ChevronRight, Eye, X, Home
+  Building, Activity, DollarSign, MessageSquare, CheckCircle,
+  XCircle, Clock, Calendar, Search, Download, FileText, FileSpreadsheet,
+  ChevronLeft, ChevronRight, Eye, X, Home, Ruler
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatHouseType } from '../../utils/houseType';
@@ -28,6 +28,7 @@ const EngineerReports = () => {
   const [sortDirection, setSortDirection] = useState('desc');
 
   const [selectedDesign, setSelectedDesign] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -144,7 +145,281 @@ const EngineerReports = () => {
   };
 
   const exportToExcel = (dataList, filename) => exportToCSV(dataList, filename);
-  const handlePrint = () => window.print();
+
+  const dateRangeLabel = (() => {
+    const labels = {
+      all: 'All Time', today: 'Today', yesterday: 'Yesterday',
+      '7days': 'Last 7 Days', '30days': 'Last 30 Days',
+      thismonth: 'This Month', lastmonth: 'Last Month', thisyear: 'This Year',
+      custom: customStartDate || customEndDate
+        ? `${customStartDate || '…'} – ${customEndDate || '…'}`
+        : 'Custom'
+    };
+    return labels[dateRange] || dateRange;
+  })();
+
+  /** Multi-page PDF of filtered report data (not a screen print). */
+  const exportToPDF = async () => {
+    try {
+      setExportingPdf(true);
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 36;
+      const usableW = pageW - margin * 2;
+      let y = margin;
+
+      const ensureSpace = (needed = 20) => {
+        if (y + needed > pageH - margin) {
+          doc.addPage();
+          y = margin;
+          return true;
+        }
+        return false;
+      };
+
+      const drawHeader = () => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59);
+        doc.text('House Design — Engineer Report', margin, y);
+        y += 18;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const tabLabel =
+          activeTab === 'designs' ? 'My Designs'
+            : activeTab === 'requests' ? 'Client Requests'
+              : 'Payment History';
+        doc.text(`Section: ${tabLabel}  |  Range: ${dateRangeLabel}  |  Generated: ${new Date().toLocaleString()}`, margin, y);
+        y += 10;
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        y += 16;
+      };
+
+      const drawTable = (columns, rows) => {
+        if (!rows.length) {
+          ensureSpace(24);
+          doc.setFontSize(10);
+          doc.setTextColor(148, 163, 184);
+          doc.text('No records match the current filters.', margin, y);
+          y += 16;
+          return;
+        }
+
+        const colW = columns.map((c) => (c.width || 1) * usableW / columns.reduce((s, col) => s + (col.width || 1), 0));
+        const rowH = 16;
+        const headerH = 18;
+
+        const paintHeader = () => {
+          ensureSpace(headerH + rowH);
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, y - 11, usableW, headerH, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(71, 85, 105);
+          let x = margin;
+          columns.forEach((col, i) => {
+            doc.text(String(col.label), x + 4, y);
+            x += colW[i];
+          });
+          y += headerH - 4;
+          doc.setDrawColor(226, 232, 240);
+          doc.line(margin, y, pageW - margin, y);
+          y += 10;
+        };
+
+        paintHeader();
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(51, 65, 85);
+
+        rows.forEach((row, rowIdx) => {
+          if (y + rowH > pageH - margin) {
+            doc.addPage();
+            y = margin;
+            paintHeader();
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(51, 65, 85);
+          }
+          if (rowIdx % 2 === 1) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(margin, y - 10, usableW, rowH, 'F');
+          }
+          let x = margin;
+          columns.forEach((col, i) => {
+            const raw = row[col.key] == null ? '' : String(row[col.key]);
+            const maxChars = Math.max(8, Math.floor(colW[i] / 5.2));
+            const text = raw.length > maxChars ? `${raw.slice(0, maxChars - 1)}…` : raw;
+            doc.text(text, x + 4, y);
+            x += colW[i];
+          });
+          y += rowH;
+        });
+      };
+
+      drawHeader();
+
+      const designs = (stats?.myDesigns || []).filter((d) => {
+        if (!isWithinDateRange(d.createdAt)) return false;
+        if (propertyTypeFilter !== 'All' && d.houseType?.toLowerCase() !== propertyTypeFilter.toLowerCase()) return false;
+        if (statusFilter !== 'All' && d.status !== statusFilter) return false;
+        if (globalSearch) return d.title?.toLowerCase().includes(globalSearch.toLowerCase());
+        return true;
+      });
+      const messages = (stats?.myMessages || []).filter((m) => {
+        if (!isWithinDateRange(m.createdAt)) return false;
+        if (globalSearch) {
+          const search = globalSearch.toLowerCase();
+          return m.sender?.name?.toLowerCase().includes(search) || m.content?.toLowerCase().includes(search);
+        }
+        return true;
+      });
+      const transactions = (stats?.myTransactions || []).filter((t) => {
+        if (!isWithinDateRange(t.createdAt)) return false;
+        if (statusFilter !== 'All' && t.paymentStatus !== statusFilter) return false;
+        if (globalSearch) {
+          const search = globalSearch.toLowerCase();
+          return t.buyer?.name?.toLowerCase().includes(search) || t.design?.title?.toLowerCase().includes(search);
+        }
+        return true;
+      });
+
+      // Summary snapshot
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Summary', margin, y);
+      y += 14;
+      const summary = [
+        ['Total House Designs', stats?.totalDesigns || 0],
+        ['Approved Designs', stats?.approvedDesigns || 0],
+        ['Pending Designs', stats?.pendingDesigns || 0],
+        ['Rejected Designs', stats?.rejectedDesigns || 0],
+        ['Total Customisations', stats?.totalCustomisations || 0],
+        ['Accepted Customisations', stats?.acceptedCustomisations || 0],
+        ['Declined Customisations', stats?.declinedCustomisations || 0],
+        ['Total Payments', stats?.totalBookings || 0],
+        ['Total Earnings', `$${(stats?.totalEarnings || 0).toLocaleString()}`],
+      ];
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      summary.forEach(([label, value]) => {
+        ensureSpace(16);
+        doc.setTextColor(100, 116, 139);
+        doc.text(label, margin, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(String(value), margin + 200, y);
+        doc.setFont('helvetica', 'normal');
+        y += 14;
+      });
+      y += 10;
+
+      if (activeTab === 'designs') {
+        ensureSpace(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`My Designs (${designs.length})`, margin, y);
+        y += 14;
+        drawTable(
+          [
+            { key: 'title', label: 'Title', width: 2.2 },
+            { key: 'type', label: 'Type', width: 1.2 },
+            { key: 'price', label: 'Price', width: 1 },
+            { key: 'views', label: 'Views', width: 0.8 },
+            { key: 'favorites', label: 'Favorites', width: 0.9 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Uploaded', width: 1.2 },
+          ],
+          designs.map((d) => ({
+            title: d.title || '—',
+            type: formatHouseType(d.houseType),
+            price: `$${(d.price || 0).toLocaleString()}`,
+            views: d.views || 0,
+            favorites: d.favoritesCount || 0,
+            status: d.status || '—',
+            date: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '',
+          }))
+        );
+      } else if (activeTab === 'requests') {
+        ensureSpace(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Client Requests (${messages.length})`, margin, y);
+        y += 14;
+        drawTable(
+          [
+            { key: 'from', label: 'From', width: 1.4 },
+            { key: 'design', label: 'Design', width: 1.6 },
+            { key: 'message', label: 'Message', width: 3.2 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Date', width: 1.2 },
+          ],
+          messages.map((m) => ({
+            from: m.sender?.name || '—',
+            design: m.design?.title || '—',
+            message: m.content || '',
+            status: m.isRead ? 'Read' : 'Unread',
+            date: m.createdAt ? new Date(m.createdAt).toLocaleString() : '',
+          }))
+        );
+      } else {
+        ensureSpace(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Payment History (${transactions.length})`, margin, y);
+        y += 14;
+        drawTable(
+          [
+            { key: 'design', label: 'Design', width: 2 },
+            { key: 'buyer', label: 'Buyer', width: 1.5 },
+            { key: 'amount', label: 'Amount', width: 1.1 },
+            { key: 'engineer', label: 'Your Share', width: 1.1 },
+            { key: 'incomplete', label: 'Remaining?', width: 1 },
+            { key: 'status', label: 'Status', width: 1 },
+            { key: 'date', label: 'Date', width: 1.2 },
+          ],
+          transactions.map((t) => {
+            const incomplete =
+              t.paymentPlan === 'half' &&
+              t.remainingStatus === 'pending' &&
+              Number(t.amountRemaining) > 0;
+            return {
+              design: t.design?.title || '—',
+              buyer: t.buyer?.name || '—',
+              amount: `$${(t.amountPaid || 0).toLocaleString()}`,
+              engineer: `$${(t.engineerAmount || 0).toLocaleString()}`,
+              incomplete: incomplete ? `Yes $${Number(t.amountRemaining).toLocaleString()}` : 'No',
+              status: t.paymentStatus || '—',
+              date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
+            };
+          })
+        );
+      }
+
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Page ${i} of ${totalPages}`, pageW - margin, pageH - 14, { align: 'right' });
+      }
+
+      doc.save(`engineer_report_${activeTab}_${Date.now()}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   if (loading) return (
     <div className="p-6 space-y-6">
@@ -186,6 +461,9 @@ const EngineerReports = () => {
     { title: 'Pending Requests', value: stats.pendingDesigns || 0, icon: <Clock size={18} />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
     { title: 'Approved Designs', value: stats.approvedDesigns || 0, icon: <CheckCircle size={18} />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
     { title: 'Rejected Designs', value: stats.rejectedDesigns || 0, icon: <XCircle size={18} />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
+    { title: 'Total Customisations', value: stats.totalCustomisations || 0, icon: <Ruler size={18} />, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/30' },
+    { title: 'Accepted Customisations', value: stats.acceptedCustomisations || 0, icon: <CheckCircle size={18} />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-900/30' },
+    { title: 'Declined Customisations', value: stats.declinedCustomisations || 0, icon: <XCircle size={18} />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/30' },
     { title: 'Total Earnings', value: `$${(stats.totalEarnings || 0).toLocaleString()}`, icon: <DollarSign size={18} />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' }
   ];
 
@@ -338,7 +616,7 @@ const EngineerReports = () => {
                 <option value="All">All Property Types</option>
                 <option value="villa">Villa</option>
                 <option value="apartment">Floor</option>
-                <option value="townhouse">Townhouse</option>
+                <option value="townhouse">Jinkad</option>
                 <option value="commercial">Commercial</option>
               </select>
             )}
@@ -379,8 +657,12 @@ const EngineerReports = () => {
                 <Download size={16} /> Export
               </button>
               <div className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-1.5 hidden group-hover:block z-30 w-40">
-                <button onClick={handlePrint} className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg">
-                  <Printer size={14} className="text-slate-500" /> Export PDF
+                <button
+                  onClick={exportToPDF}
+                  disabled={exportingPdf}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg disabled:opacity-60"
+                >
+                  <FileText size={14} className="text-red-500" /> {exportingPdf ? 'Generating…' : 'Export PDF'}
                 </button>
                 <button onClick={() => exportToExcel(activeList, exportFilename)} className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full text-left rounded-lg">
                   <FileSpreadsheet size={14} className="text-blue-500" /> Export Excel

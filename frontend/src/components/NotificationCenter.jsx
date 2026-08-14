@@ -109,6 +109,12 @@ const NotificationCenter = ({
     if (!n.isRead) await markOne(n._id);
     setOpen(false);
     const role = (user?.role || '').toLowerCase();
+    const title = (n.title || '').toLowerCase();
+    if (title.includes('customisation') || title.includes('customization')) {
+      if (role === 'client') navigate('/client-dashboard/customisations');
+      else if (role === 'engineer') navigate('/engineer-dashboard/customisations');
+      return;
+    }
     if (n.project || variant === 'projects') {
       if (role === 'client') navigate('/client-dashboard/projects');
       else if (role === 'engineer') navigate('/engineer-dashboard/projects');

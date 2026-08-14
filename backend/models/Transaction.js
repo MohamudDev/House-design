@@ -16,6 +16,12 @@ const transactionSchema = new mongoose.Schema({
     ref: 'Design', 
     required: true 
   },
+  /** What was purchased: full house, or one half */
+  purchaseType: {
+    type: String,
+    enum: ['full', 'halfA', 'halfB'],
+    default: 'full'
+  },
   /** Full design price (before split) */
   totalPrice: {
     type: Number,

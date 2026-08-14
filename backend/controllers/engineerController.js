@@ -2,7 +2,12 @@ const Design = require('../models/Design');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Message = require('../models/Message');
+const CustomizationRequest = require('../models/CustomizationRequest');
 const { getFileUrl } = require('../middleware/uploadMiddleware');
+const {
+  buildSplitSaleFromBody,
+  validateSplitSalePayload
+} = require('../utils/splitSale');
 
 const ROOM_TYPES = new Set(['bedroom', 'bathroom', 'kitchen', 'living', 'master', 'other']);
 
@@ -123,6 +128,12 @@ exports.uploadDesign = async (req, res) => {
 
     const { houseLength, houseWidth, houseArea } = parseHouseDimensions(req.body);
 
+    const splitSale = buildSplitSaleFromBody(req.body);
+    const splitErr = validateSplitSalePayload(splitSale, amount);
+    if (splitErr) {
+      return res.status(400).json({ success: false, message: splitErr });
+    }
+
     const dimError = validateDimensionsPayload({
       houseType,
       houseLength,
@@ -193,6 +204,10 @@ exports.uploadDesign = async (req, res) => {
       plan2D,
       model3D,
       interiorGallery,
+      allowHalfSale: splitSale.allowHalfSale,
+      halfA: splitSale.halfA,
+      halfB: splitSale.halfB,
+      fullSaleStatus: splitSale.fullSaleStatus,
       engineer: req.user.id,
       status: req.user.isApproved ? 'approved' : 'pending'
     });
@@ -246,7 +261,8 @@ exports.getEngineerStats = async (req, res) => {
       designGrowth,
       bookingGrowth,
       earningsGrowth,
-      messagesPerDesign
+      messagesPerDesign,
+      customizationStatusAgg
     ] = await Promise.all([
       Transaction.aggregate([
         { $match: { engineer: engineerId, paymentStatus: 'completed' } },
@@ -291,8 +307,25 @@ exports.getEngineerStats = async (req, res) => {
             { $match: { designId: { $in: designIds } } },
             { $group: { _id: '$designId', count: { $sum: 1 } } }
           ])
-        : Promise.resolve([])
+        : Promise.resolve([]),
+      CustomizationRequest.aggregate([
+        { $match: { engineer: engineerId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ])
     ]);
+
+    const customizationCounts = {
+      total: 0,
+      pending: 0,
+      accepted: 0,
+      declined: 0,
+      cancelled: 0
+    };
+    customizationStatusAgg.forEach((row) => {
+      const key = row._id || 'pending';
+      customizationCounts[key] = row.count;
+      customizationCounts.total += row.count;
+    });
 
     const totalDesigns = designs.length;
     const pendingDesigns = designs.filter((d) => d.status === 'pending').length;
@@ -360,7 +393,12 @@ exports.getEngineerStats = async (req, res) => {
         myMessages,
         designGrowth,
         bookingGrowth,
-        earningsGrowth
+        earningsGrowth,
+        totalCustomisations: customizationCounts.total,
+        acceptedCustomisations: customizationCounts.accepted,
+        declinedCustomisations: customizationCounts.declined,
+        pendingCustomisations: customizationCounts.pending,
+        cancelledCustomisations: customizationCounts.cancelled
       }
     });
   } catch (error) {
@@ -385,27 +423,33 @@ exports.getProfile = async (req, res) => {
 // @access  Private/Engineer
 exports.updateProfile = async (req, res) => {
   try {
-    console.log('DEBUG: Update Profile Request Body:', req.body);
-    const { bio, specialization, isAvailable, workingHours } = req.body;
-    
+    const { name, bio, specialization, isAvailable, workingHours } = req.body;
+
+    const parseBool = (v) => {
+      if (v === undefined || v === null || v === '') return undefined;
+      if (typeof v === 'boolean') return v;
+      return String(v).toLowerCase() === 'true' || v === '1' || v === 'on';
+    };
+
+    const updates = {};
+    if (bio !== undefined) updates.bio = bio;
+    if (specialization !== undefined) updates.specialization = specialization;
+    if (workingHours !== undefined) updates.workingHours = workingHours || '9 AM - 5 PM';
+    const available = parseBool(isAvailable);
+    if (available !== undefined) updates.isAvailable = available;
+    if (name && String(name).trim()) {
+      updates.name = String(name).trim();
+    }
+
+    if (req.file) {
+      updates.profileImage = getFileUrl(req.file);
+    }
+
     const user = await User.findOneAndUpdate(
       { _id: req.user.id },
-      { 
-        $set: { 
-          bio: bio || '', 
-          specialization: specialization || '', 
-          isAvailable: isAvailable !== undefined ? isAvailable : true, 
-          workingHours: workingHours || '9 AM - 5 PM' 
-        } 
-      },
+      { $set: updates },
       { new: true, runValidators: true }
     ).select('-password');
-
-    console.log('DEBUG: Updated User Data:', {
-      id: user._id,
-      bio: user.bio,
-      available: user.isAvailable
-    });
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -522,6 +566,26 @@ exports.updateDesign = async (req, res) => {
 
     if (req.body.roomDimensions !== undefined) {
       updateData.roomDimensions = roomDimensions;
+    }
+
+    if (req.body.allowHalfSale !== undefined || req.body.halfA !== undefined || req.body.halfB !== undefined) {
+      const splitSale = buildSplitSaleFromBody(req.body);
+      const fullPrice = Number(price || budgetEstimate || design.price || design.budgetEstimate);
+      const splitErr = validateSplitSalePayload(splitSale, fullPrice);
+      if (splitErr) {
+        return res.status(400).json({ success: false, message: splitErr });
+      }
+      // Preserve sold flags — engineer can edit prices/labels but not unsell via edit
+      updateData.allowHalfSale = splitSale.allowHalfSale;
+      updateData.halfA = {
+        ...splitSale.halfA,
+        status: design.halfA?.status === 'sold' ? 'sold' : splitSale.halfA.status
+      };
+      updateData.halfB = {
+        ...splitSale.halfB,
+        status: design.halfB?.status === 'sold' ? 'sold' : splitSale.halfB.status
+      };
+      updateData.fullSaleStatus = design.fullSaleStatus === 'sold' ? 'sold' : splitSale.fullSaleStatus;
     }
 
     if (req.body.interiorGalleryData) {

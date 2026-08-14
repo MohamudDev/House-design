@@ -117,7 +117,7 @@ const EngineerOverview = () => {
       {/* Project Tracking widgets */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Project Delivery</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Project Progress</h2>
           <Link to="/engineer-dashboard/projects" className="text-sm font-bold text-indigo-600 hover:underline">View all</Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

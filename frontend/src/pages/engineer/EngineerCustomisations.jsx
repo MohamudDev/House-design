@@ -38,6 +38,10 @@ const EngineerCustomisations = () => {
 
   const respond = async (status) => {
     if (!selected) return;
+    if (status === 'declined' && !engineerNote.trim()) {
+      alert('Please write a reason for declining. The client will see this note.');
+      return;
+    }
     try {
       setResponding(true);
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -159,12 +163,13 @@ const EngineerCustomisations = () => {
                 {selected.status === 'pending' ? (
                   <>
                     <textarea
-                      rows={2}
+                      rows={3}
                       value={engineerNote}
                       onChange={(e) => setEngineerNote(e.target.value)}
-                      placeholder="Optional note to client..."
+                      placeholder="Note to client (required if you Decline)..."
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-indigo-600"
                     />
+                    <p className="text-[11px] text-slate-500">Decline requires a reason so the client can see why.</p>
                     <div className="flex gap-2">
                       <button
                         type="button"

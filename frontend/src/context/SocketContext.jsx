@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 export const SocketContext = createContext();
 
@@ -13,7 +14,7 @@ export const SocketProvider = ({ children }) => {
   const fetchUnreadCount = async () => {
     if (!user || !user.token) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/messages/unread-count`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/messages/unread-count`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const data = await res.json();
@@ -29,8 +30,8 @@ export const SocketProvider = ({ children }) => {
     if (user && user.token) {
       fetchUnreadCount();
       
-      const socketUrl = import.meta.env.VITE_API_URL || '';
-      const newSocket = io(socketUrl.replace('/api', '')); // Strip /api if it's there
+      const socketUrl = getApiBaseUrl() || undefined;
+      const newSocket = io(socketUrl);
       
       setSocket(newSocket);
 
