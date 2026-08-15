@@ -1,15 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import { Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { DollarSign, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { AuthContext } from '../../context/AuthContext';
 
 const ManageWithdrawals = () => {
+  const { user } = useContext(AuthContext);
   const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchWithdrawals();
-  }, []);
+    if (user?.role === 'superadmin') {
+      fetchWithdrawals();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (user && user.role !== 'superadmin') {
+    return <Navigate to="/admin-dashboard" replace />;
+  }
 
   const fetchWithdrawals = async () => {
     try {

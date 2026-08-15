@@ -11,7 +11,7 @@ const ManageUsers = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'client' });
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', password: '', role: 'client' });
 
   const fetchUsers = async () => {
     try {
@@ -36,7 +36,7 @@ const ManageUsers = () => {
       await axios.post('/api/admin/users', formData, config);
       alert('User created successfully');
       setShowCreateModal(false);
-      setFormData({ name: '', email: '', password: '', role: 'client' });
+      setFormData({ name: '', phone: '', email: '', password: '', role: 'client' });
       fetchUsers();
     } catch (error) {
       alert(error.response?.data?.message || 'Error creating user');
@@ -80,7 +80,8 @@ const ManageUsers = () => {
   };
 
   const handleSuspendToggle = async (userId, currentlySuspended) => {
-    if (!window.confirm(`Are you sure you want to ${currentlySuspended ? 'activate' : 'suspend'} this user?`)) return;
+    const action = currentlySuspended ? 'activate' : 'set inactive';
+    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
@@ -88,12 +89,15 @@ const ManageUsers = () => {
       await axios.put(endpoint, {}, config);
       fetchUsers();
     } catch (error) {
-      alert(error.response?.data?.message || 'Error updating suspension status');
+      alert(error.response?.data?.message || 'Error updating account status');
     }
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     
     let matchesStatus = true;
@@ -160,6 +164,7 @@ const ManageUsers = () => {
             <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
               <tr className="text-slate-500 dark:text-slate-400 text-sm font-semibold">
                 <th className="p-4">Name</th>
+                <th className="p-4">Phone</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Status</th>
@@ -170,7 +175,8 @@ const ManageUsers = () => {
               {filteredUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                   <td className="p-4 font-medium text-slate-800 dark:text-white">{user.name}</td>
-                  <td className="p-4 text-slate-600 dark:text-slate-300">{user.email}</td>
+                  <td className="p-4 text-slate-600 dark:text-slate-300">{user.phone || '—'}</td>
+                  <td className="p-4 text-slate-600 dark:text-slate-300">{user.email || '—'}</td>
                   <td className="p-4 uppercase text-xs font-bold tracking-wider">
                     <span className={`px-2 py-1 rounded ${
                       user.role === 'admin' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' : 
@@ -182,7 +188,7 @@ const ManageUsers = () => {
                   <td className="p-4">
                     <div className="flex flex-col gap-1">
                       {user.isSuspended ? (
-                        <span className="text-red-600 dark:text-red-400 flex items-center gap-1 text-sm font-medium"><Ban size={16}/> Suspended</span>
+                        <span className="text-red-600 dark:text-red-400 flex items-center gap-1 text-sm font-medium"><Ban size={16}/> {user.role === 'client' ? 'Inactive' : 'Suspended'}</span>
                       ) : user.role === 'engineer' ? (
                         user.isApproved ? (
                           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-sm font-medium"><Check size={16}/> Verified</span>
@@ -236,11 +242,15 @@ const ManageUsers = () => {
                                 ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30' 
                                 : 'text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30'
                             }`}
-                            title={user.isSuspended ? "Activate User" : "Suspend User"}
+                            title={
+                              user.role === 'client'
+                                ? (user.isSuspended ? 'Set Active' : 'Set Inactive')
+                                : (user.isSuspended ? 'Activate User' : 'Suspend User')
+                            }
                           >
                             {user.isSuspended ? <Play size={18} /> : <Ban size={18} />}
                           </button>
-                          {user.role !== 'admin' && (
+                          {user.role !== 'admin' && user.canDelete !== false && (
                             <button 
                               onClick={() => handleDelete(user._id)} 
                               className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
@@ -248,6 +258,11 @@ const ManageUsers = () => {
                             >
                               <Trash2 size={18}/>
                             </button>
+                          )}
+                          {user.role === 'client' && user.hasProtectedProjects && (
+                            <span className="text-[10px] text-slate-400 self-center max-w-[120px] leading-tight" title="Client has an in-progress or completed project">
+                              Use Inactive
+                            </span>
                           )}
                         </>
                       )}
@@ -345,6 +360,16 @@ const ManageUsers = () => {
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500"
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
+                <input 
+                  type="tel" 
+                  required 
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  value={formData.phone}
+                  onChange={e => setFormData({...formData, phone: e.target.value})}
                 />
               </div>
               <div>

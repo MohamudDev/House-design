@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Clock, ArrowLeft, Eye, Layout, DollarSign, MessageSquare } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
-import ClientNavbar from '../../components/client/ClientNavbar';
+import Navbar from '../../components/Navbar';
 import DesignViewModal from '../../components/DesignViewModal';
 import { formatHouseType } from '../../utils/houseType';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
@@ -53,7 +53,7 @@ const ClientEngineerProfile = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <ClientNavbar />
+      <Navbar />
       <div className="flex-1 max-w-5xl mx-auto w-full p-4 md:p-8">
         <button
           type="button"

@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import axios from 'axios';
 import { Users, UserCheck, User, FolderOpen, CheckCircle, XCircle, DollarSign, ShoppingBag, CreditCard, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AuthContext } from '../../context/AuthContext';
 
 const AdminOverview = () => {
+  const { user } = useContext(AuthContext);
+  const isSuperAdmin = user?.role === 'superadmin';
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalEngineers: 0,
@@ -67,10 +70,15 @@ const AdminOverview = () => {
     { title: 'Designs Pending', value: stats.designsPending, icon: <FolderOpen size={24} />, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
     { title: 'Designs Approved', value: stats.designsApproved, icon: <CheckCircle size={24} />, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
     { title: 'Designs Rejected', value: stats.designsRejected, icon: <XCircle size={24} />, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
-    { title: 'Total Sales', value: `$${(stats.totalSales || 0).toLocaleString()}`, icon: <ShoppingBag size={24} />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-    { title: 'Platform Commission', value: `$${(stats.totalCommission || 0).toLocaleString()}`, icon: <DollarSign size={24} />, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
-    { title: 'Total Transactions', value: stats.totalTransactions, icon: <CreditCard size={24} />, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' }
   ];
+
+  if (isSuperAdmin) {
+    statCards.push(
+      { title: 'Total Sales', value: `$${(stats.totalSales || 0).toLocaleString()}`, icon: <ShoppingBag size={24} />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+      { title: 'Platform Commission', value: `$${(stats.totalCommission || 0).toLocaleString()}`, icon: <DollarSign size={24} />, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
+      { title: 'Total Transactions', value: stats.totalTransactions, icon: <CreditCard size={24} />, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' }
+    );
+  }
 
   return (
     <div>

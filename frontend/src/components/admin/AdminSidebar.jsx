@@ -4,13 +4,16 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
 const AdminSidebar = ({ isOpen, setIsSidebarOpen }) => {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
+  const isSuperAdmin = user?.role === 'superadmin';
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin-dashboard', icon: <LayoutDashboard size={20} />, exact: true },
     { name: 'Manage Users', path: '/admin-dashboard/users', icon: <Users size={20} /> },
     { name: 'Manage Designs', path: '/admin-dashboard/designs', icon: <FileImage size={20} /> },
-    { name: 'Payouts', path: '/admin-dashboard/withdrawals', icon: <DollarSign size={20} /> },
+    ...(isSuperAdmin
+      ? [{ name: 'Payouts', path: '/admin-dashboard/withdrawals', icon: <DollarSign size={20} /> }]
+      : []),
     { name: 'Reports', path: '/admin-dashboard/reports', icon: <FileBarChart size={20} /> },
     { name: 'Inbox', path: '/admin-dashboard/contacts', icon: <MessageSquare size={20} /> },
     { name: 'Complaints', path: '/admin-dashboard/complaints', icon: <AlertCircle size={20} /> },

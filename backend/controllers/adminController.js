@@ -4,6 +4,24 @@ const Transaction = require('../models/Transaction');
 const Complaint = require('../models/Complaint');
 const Withdrawal = require('../models/Withdrawal');
 const Message = require('../models/Message');
+const Project = require('../models/Project');
+
+/** Client projects that must be kept — admin may only deactivate, not delete the client. */
+const CLIENT_PROTECTED_PROJECT_STATUSES = [
+  'Paid',
+  'In Progress',
+  'Revision Requested',
+  'Completed - Waiting for Client Confirmation',
+  'Delivered'
+];
+
+const clientHasProtectedProjects = async (clientId) => {
+  const count = await Project.countDocuments({
+    client: clientId,
+    projectStatus: { $in: CLIENT_PROTECTED_PROJECT_STATUSES }
+  });
+  return count > 0;
+};
 
 // @desc    Get detailed reports
 // @route   GET /api/admin/reports
@@ -94,6 +112,47 @@ exports.getAdminReports = async (req, res) => {
     const totalUnsoldDesigns = Math.max(0, totalDesigns - totalSoldDesigns);
     const totalCommission = transactions.length > 0 ? transactions[0].totalCommission : 0;
     const totalSales = transactions.length > 0 ? transactions[0].totalSales : 0;
+    const isSuperAdmin = req.user.role === 'superadmin';
+
+    const usersForClient = (isSuperAdmin
+      ? allUsers
+      : allUsers.map((u) => {
+          const { walletBalance, ...rest } = u;
+          return rest;
+        }));
+
+    const clientIds = usersForClient.filter((u) => u.role === 'client').map((u) => u._id);
+    const protectedClientIds = new Set();
+    if (clientIds.length) {
+      const rows = await Project.aggregate([
+        {
+          $match: {
+            client: { $in: clientIds },
+            projectStatus: { $in: CLIENT_PROTECTED_PROJECT_STATUSES }
+          }
+        },
+        { $group: { _id: '$client' } }
+      ]);
+      rows.forEach((r) => protectedClientIds.add(String(r._id)));
+    }
+
+    const usersWithDeleteFlags = usersForClient.map((u) => ({
+      ...u,
+      hasProtectedProjects: u.role === 'client' && protectedClientIds.has(String(u._id)),
+      canDelete: !(u.role === 'client' && protectedClientIds.has(String(u._id)))
+    }));
+
+    const transactionsForClient = isSuperAdmin
+      ? allTransactions
+      : allTransactions.map((t) => ({
+          _id: t._id,
+          design: t.design,
+          buyer: t.buyer,
+          paymentStatus: t.paymentStatus,
+          paymentPlan: t.paymentPlan,
+          remainingStatus: t.remainingStatus,
+          createdAt: t.createdAt,
+        }));
 
     res.status(200).json({
       success: true,
@@ -104,10 +163,10 @@ exports.getAdminReports = async (req, res) => {
         statusStats,
         recentUsers,
         recentDesigns,
-        allUsers,
+        allUsers: usersWithDeleteFlags,
         allDesigns,
         allComplaints,
-        allTransactions,
+        allTransactions: transactionsForClient,
         allMessages,
         fullStats: {
           totalClients,
@@ -116,10 +175,10 @@ exports.getAdminReports = async (req, res) => {
           totalDesigns,
           totalSoldDesigns,
           totalUnsoldDesigns,
-          pendingWithdrawals,
           pendingComplaints,
-          totalCommission,
-          totalSales
+          ...(isSuperAdmin
+            ? { pendingWithdrawals, totalCommission, totalSales }
+            : {})
         }
       }
     });
@@ -185,6 +244,7 @@ exports.getAdminStats = async (req, res) => {
     const totalCommission = transactions.length > 0 ? transactions[0].totalCommission : 0;
     const totalSales = transactions.length > 0 ? transactions[0].totalSales : 0;
     const totalTransactions = transactions.length > 0 ? transactions[0].totalTransactions : 0;
+    const isSuperAdmin = req.user.role === 'superadmin';
 
     res.status(200).json({
       success: true,
@@ -195,9 +255,9 @@ exports.getAdminStats = async (req, res) => {
         designsPending: pendingDesigns,
         designsApproved: approvedDesigns,
         designsRejected: rejectedDesigns,
-        totalCommission,
-        totalSales,
-        totalTransactions
+        ...(isSuperAdmin
+          ? { totalCommission, totalSales, totalTransactions }
+          : {})
       }
     });
   } catch (error) {
@@ -210,8 +270,30 @@ exports.getAdminStats = async (req, res) => {
 // @access  Private/Admin
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select('-password').sort('-createdAt');
-    res.status(200).json({ success: true, data: users });
+    const users = await User.find({}).select('-password').sort('-createdAt').lean();
+    const clientIds = users.filter((u) => u.role === 'client').map((u) => u._id);
+    const protectedClientIds = new Set();
+
+    if (clientIds.length) {
+      const rows = await Project.aggregate([
+        {
+          $match: {
+            client: { $in: clientIds },
+            projectStatus: { $in: CLIENT_PROTECTED_PROJECT_STATUSES }
+          }
+        },
+        { $group: { _id: '$client' } }
+      ]);
+      rows.forEach((r) => protectedClientIds.add(String(r._id)));
+    }
+
+    const data = users.map((u) => ({
+      ...u,
+      hasProtectedProjects: u.role === 'client' && protectedClientIds.has(String(u._id)),
+      canDelete: !(u.role === 'client' && protectedClientIds.has(String(u._id)))
+    }));
+
+    res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -255,6 +337,14 @@ exports.deleteUser = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'client' && (await clientHasProtectedProjects(user._id))) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'This client has an in-progress or completed project. You cannot delete them — set the account to Inactive instead.'
+      });
     }
 
     await User.deleteOne({ _id: req.params.id });
@@ -355,10 +445,12 @@ exports.updateAdminSettings = async (req, res) => {
 // @access  Private/Admin
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, password, role } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const phone = String(req.body.phone || '').replace(/[\s\-()]/g, '').trim();
     
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+    if (!name || !phone || !email || !password || !role) {
+      return res.status(400).json({ message: 'Name, phone, email, password, and role are required' });
     }
     
     const allowedRoles = ['client', 'engineer', 'admin'];
@@ -370,13 +462,16 @@ exports.createUser = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to create admin users' });
     }
 
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({
+      $or: [{ phone }, { email }]
+    });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
     const userData = {
       name,
+      phone,
       email,
       password,
       role,

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useContext } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Ruler, Send, AlertTriangle } from 'lucide-react';
-import ClientNavbar from '../../components/client/ClientNavbar';
+import Navbar from '../../components/Navbar';
 import { AuthContext } from '../../context/AuthContext';
 
 const calcArea = (length, width) => {
@@ -114,7 +114,7 @@ const CustomiseDesign = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <ClientNavbar variant="workspace" />
+      <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button
           type="button"

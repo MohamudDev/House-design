@@ -1,12 +1,13 @@
 import { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { User, Mail, Lock, Briefcase, ArrowRight, AlertCircle, CheckCircle2, FileText, X } from 'lucide-react';
+import { User, Mail, Lock, Briefcase, ArrowRight, AlertCircle, CheckCircle2, FileText, X, Phone } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
+    phone: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -106,6 +107,18 @@ const Register = () => {
     setIsLoading(true);
     setError('');
 
+    if (!formData.phone.trim()) {
+      setError('Phone number is required');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      setIsLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
@@ -126,7 +139,8 @@ const Register = () => {
     
     const data = new FormData();
     data.append('name', formData.name);
-    data.append('email', formData.email);
+    data.append('phone', formData.phone.trim());
+    data.append('email', formData.email.trim());
     data.append('password', formData.password);
     data.append('role', formData.role);
     if (acceptedTerms) {
@@ -201,6 +215,24 @@ const Register = () => {
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-slate-50 dark:bg-slate-900 dark:text-white transition-colors"
                   placeholder="name"
                   value={formData.name}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Phone Number</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+                  <Phone size={20} />
+                </div>
+                <input
+                  type="tel"
+                  name="phone"
+                  required
+                  className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-slate-50 dark:bg-slate-900 dark:text-white transition-colors"
+                  placeholder="0612345678"
+                  value={formData.phone}
                   onChange={handleChange}
                 />
               </div>

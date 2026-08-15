@@ -11,6 +11,25 @@ const generateToken = (id) => {
   });
 };
 
+const normalizePhone = (phone) =>
+  String(phone || '').replace(/[\s\-()]/g, '').trim();
+
+const escapeRegex = (value) =>
+  String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const findUserByLogin = async (identifier, withPassword = false) => {
+  const raw = String(identifier || '').trim();
+  if (!raw) return null;
+
+  const query = User.findOne(
+    raw.includes('@')
+      ? { email: { $regex: new RegExp(`^${escapeRegex(raw.toLowerCase())}$`, 'i') } }
+      : { phone: normalizePhone(raw) }
+  );
+
+  return withPassword ? query.select('+password') : query;
+};
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
@@ -25,9 +44,18 @@ exports.register = async (req, res) => {
     const body = req.body || {};
     const { name, password, role, acceptedTerms } = body;
     const email = (body.email || '').trim().toLowerCase();
+    const phone = normalizePhone(body.phone);
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields. The form data was not parsed correctly by the server.' });
+    if (!name || !phone || !email || !password) {
+      return res.status(400).json({ message: 'Name, phone number, email, and password are required.' });
+    }
+
+    if (phone.length < 7) {
+      return res.status(400).json({ message: 'Please enter a valid phone number.' });
+    }
+
+    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
     }
 
     if (role === 'engineer' && !acceptedTerms) {
@@ -47,18 +75,25 @@ exports.register = async (req, res) => {
       selfieUrl = getFileUrl(req.files['selfie'][0]);
     }
 
-    // Check if user exists (case-insensitive)
-    const userExists = await User.findOne({
-      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-    });
+    const orQuery = [
+      { phone },
+      { email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } }
+    ];
+
+    const userExists = await User.findOne({ $or: orQuery });
 
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      const samePhone = userExists.phone === phone;
+      return res.status(400).json({
+        message: samePhone
+          ? 'An account with this phone number already exists'
+          : 'An account with this email already exists'
+      });
     }
 
-    // Create user
-    const user = await User.create({
+    const userData = {
       name,
+      phone,
       email,
       password,
       role,
@@ -67,13 +102,16 @@ exports.register = async (req, res) => {
       certificateUrl,
       selfieUrl,
       verificationStatus: role === 'engineer' ? 'pending' : undefined
-    });
+    };
+
+    const user = await User.create(userData);
 
     if (user) {
       res.status(201).json({
         _id: user._id,
         name: user.name,
-        email: user.email,
+        email: user.email || '',
+        phone: user.phone,
         role: user.role,
         isApproved: user.isApproved,
         token: generateToken(user._id),
@@ -82,6 +120,14 @@ exports.register = async (req, res) => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0] || 'phone';
+      return res.status(400).json({
+        message: field === 'email'
+          ? 'An account with this email already exists'
+          : 'An account with this phone number already exists'
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -98,10 +144,11 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Case-insensitive email match (same as forgot-password)
-    const user = await User.findOne({
-      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-    }).select('+password');
+    if (!email.includes('@')) {
+      return res.status(400).json({ message: 'Please login with your email address' });
+    }
+
+    const user = await findUserByLogin(email, true);
 
     if (!user) {
       console.log('Login failed: no user for', email);
@@ -129,7 +176,8 @@ exports.login = async (req, res) => {
     res.json({
       _id: user._id,
       name: user.name,
-      email: user.email,
+      email: user.email || '',
+      phone: user.phone || '',
       role: user.role,
       isApproved: user.isApproved,
       verificationStatus: user.verificationStatus,
@@ -149,7 +197,8 @@ exports.getMe = async (req, res) => {
     res.json({
       _id: user._id,
       name: user.name,
-      email: user.email,
+      email: user.email || '',
+      phone: user.phone || '',
       role: user.role,
       isApproved: user.isApproved,
       verificationStatus: user.verificationStatus,

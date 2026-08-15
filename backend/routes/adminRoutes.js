@@ -59,10 +59,10 @@ router.route('/designs/:id/status')
 
 router.put('/designs/:id/hide', hideDesign);
 
-// Withdrawal Routes
+// Withdrawal Routes (superadmin only — financial)
 router.route('/withdrawals')
-  .get(getAllWithdrawals);
+  .get(authorize('superadmin'), getAllWithdrawals);
 router.route('/withdrawals/:id/status')
-  .put(updateWithdrawalStatus);
+  .put(authorize('superadmin'), updateWithdrawalStatus);
 
 module.exports = router;

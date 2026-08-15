@@ -219,7 +219,7 @@ const DesignViewModal = ({ design: initialDesign, onClose }) => {
                       disabled={currentRoomIndex === design.interiorGallery.length - 1}
                       className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
-                      Next Room →
+                      Next →
                     </button>
                   </div>
                 </>

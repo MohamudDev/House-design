@@ -28,7 +28,7 @@ import EngineerCollaborations from './pages/engineer/EngineerCollaborations';
 import EngineerProjects from './pages/engineer/EngineerProjects';
 import ProtectedRoute from './components/ProtectedRoute';
 import MessagesView from './components/MessagesView';
-import ClientNavbar from './components/client/ClientNavbar';
+import Navbar from './components/Navbar';
 import ClientWorkspaceNav from './components/client/ClientWorkspaceNav';
 import MyFavorites from './pages/client/MyFavorites';
 import ClientMyDesigns from './pages/client/ClientMyDesigns';
@@ -179,7 +179,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-                  <ClientNavbar />
+                  <Navbar />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-2 md:p-6 h-[calc(100vh-80px)]">
                     <MessagesView />
                   </div>
@@ -192,7 +192,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-                  <ClientNavbar variant="workspace" />
+                  <Navbar />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-6">
                     <ClientWorkspaceNav />
                     <ClientMyDesigns />
@@ -206,7 +206,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-                  <ClientNavbar />
+                  <Navbar />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-6">
                     <ClientPurchases />
                   </div>
@@ -219,7 +219,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['client']}>
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-                  <ClientNavbar />
+                  <Navbar />
                   <div className="flex-1 max-w-7xl mx-auto w-full p-6">
                     <ComplaintManager />
                   </div>

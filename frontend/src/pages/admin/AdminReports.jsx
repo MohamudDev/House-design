@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, 
@@ -12,8 +12,11 @@ import {
   Plus, Play, ToggleLeft, Volume2
 } from 'lucide-react';
 import { formatHouseType } from '../../utils/houseType';
+import { AuthContext } from '../../context/AuthContext';
 
 const AdminReports = () => {
+  const { user } = useContext(AuthContext);
+  const isSuperAdmin = user?.role === 'superadmin';
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -105,6 +108,12 @@ const AdminReports = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'bookings' && !isSuperAdmin) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, isSuperAdmin]);
 
   useEffect(() => {
     fetchReports();
@@ -879,12 +888,14 @@ const AdminReports = () => {
               >
                 Complaints
               </button>
-              <button 
-                onClick={() => handleTabChange('bookings')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'bookings' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                Payment
-              </button>
+              {isSuperAdmin && (
+                <button 
+                  onClick={() => handleTabChange('bookings')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'bookings' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  Payment
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1504,8 +1515,16 @@ const AdminReports = () => {
                             <td className="px-6 py-4 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => setMessageRecipient(user)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg" title="Send message"><MessageSquare size={14} /></button>
                               <button onClick={() => setResetPwdUser(user)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg" title="Reset password"><Key size={14} /></button>
-                              <button onClick={() => handleToggleSuspend(user._id, user.status === 'blocked')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg" title="Toggle suspend"><EyeOff size={14} /></button>
-                              <button onClick={() => handleDeleteUser(user._id)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 rounded-lg" title="Delete user"><Trash2 size={14} /></button>
+                              <button
+                                onClick={() => handleToggleSuspend(user._id, user.status === 'blocked')}
+                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg"
+                                title={user.role === 'client' ? (user.status === 'blocked' ? 'Set Active' : 'Set Inactive') : 'Toggle suspend'}
+                              >
+                                <EyeOff size={14} />
+                              </button>
+                              {user.canDelete !== false && (
+                                <button onClick={() => handleDeleteUser(user._id)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 rounded-lg" title="Delete user"><Trash2 size={14} /></button>
+                              )}
                             </td>
                           )}
                         </tr>
@@ -1607,8 +1626,8 @@ const AdminReports = () => {
                 </table>
               )}
 
-              {/* Bookings (Transactions) Report Directory Table */}
-              {activeTab === 'bookings' && (
+              {/* Bookings (Transactions) Report Directory Table — superadmin only */}
+              {activeTab === 'bookings' && isSuperAdmin && (
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200/50 dark:border-slate-800">
                     <tr>
@@ -1908,10 +1927,12 @@ const AdminReports = () => {
                       <p className="text-[10px] uppercase font-bold text-slate-400">Average Rating</p>
                       <p className="text-sm font-black text-amber-500">{getEngineerAvgRating(selectedUserReport._id) !== null ? `★ ${getEngineerAvgRating(selectedUserReport._id).toFixed(1)}` : 'No ratings yet'}</p>
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Wallet balance</p>
-                      <p className="text-sm font-black text-emerald-500">${(selectedUserReport.walletBalance || 0).toLocaleString()}</p>
-                    </div>
+                    {isSuperAdmin && (
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400">Wallet balance</p>
+                        <p className="text-sm font-black text-emerald-500">${(selectedUserReport.walletBalance || 0).toLocaleString()}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Verification Status</p>
                       <p className="text-xs font-black capitalize text-indigo-500 mt-1">{selectedUserReport.verification}</p>
@@ -1968,9 +1989,18 @@ const AdminReports = () => {
               <button onClick={() => handleToggleSuspend(selectedUserReport._id, selectedUserReport.status === 'blocked')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
                 selectedUserReport.status === 'blocked' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'
               }`}>
-                {selectedUserReport.status === 'blocked' ? 'Activate User' : 'Suspend User'}
+                {selectedUserReport.role === 'client'
+                  ? (selectedUserReport.status === 'blocked' ? 'Set Active' : 'Set Inactive')
+                  : (selectedUserReport.status === 'blocked' ? 'Activate User' : 'Suspend User')}
               </button>
-              <button onClick={() => handleDeleteUser(selectedUserReport._id)} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors">Delete Account</button>
+              {selectedUserReport.canDelete !== false && (
+                <button onClick={() => handleDeleteUser(selectedUserReport._id)} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors">Delete Account</button>
+              )}
+              {selectedUserReport.role === 'client' && selectedUserReport.hasProtectedProjects && (
+                <p className="w-full text-right text-[11px] text-slate-400 mt-1">
+                  Client has an in-progress or completed project — use Inactive instead of delete.
+                </p>
+              )}
             </div>
 
           </div>

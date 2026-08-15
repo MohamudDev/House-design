@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Ruler, XCircle, MessageSquare } from 'lucide-react';
-import ClientNavbar from '../../components/client/ClientNavbar';
+import Navbar from '../../components/Navbar';
 import ClientWorkspaceNav from '../../components/client/ClientWorkspaceNav';
 import { AuthContext } from '../../context/AuthContext';
 import { getApiBaseUrl } from '../../utils/apiBase';
@@ -94,7 +94,7 @@ const ClientCustomisations = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <ClientNavbar variant="workspace" />
+      <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
         <ClientWorkspaceNav />
         <div>

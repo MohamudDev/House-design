@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Search, FolderKanban, Eye } from 'lucide-react';
-import ClientNavbar from '../../components/client/ClientNavbar';
+import Navbar from '../../components/Navbar';
 import ClientWorkspaceNav from '../../components/client/ClientWorkspaceNav';
 import CollaborationDetail from '../../components/collaboration/CollaborationDetail';
 
@@ -37,7 +37,7 @@ const ClientCollaborations = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col">
-      <ClientNavbar variant="workspace" />
+      <Navbar />
       <div className="flex-1 max-w-7xl mx-auto w-full p-6 space-y-6">
         <ClientWorkspaceNav />
         <div>

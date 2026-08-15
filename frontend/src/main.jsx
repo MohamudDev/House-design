@@ -7,7 +7,7 @@ import { registerSW } from 'virtual:pwa-register'
 import { getApiBaseUrl } from './utils/apiBase'
 
 // PWA build stamp — bump to force installed apps to fetch a new service worker.
-const PWA_BUILD = '20260805-cf';
+const PWA_BUILD = '20260815-nav';
 
 const updateSW = registerSW({
   immediate: true,
