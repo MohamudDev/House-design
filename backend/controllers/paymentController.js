@@ -41,6 +41,8 @@ async function chargeWaafi({ accountNo, amount, description }) {
   return waafiResponse.data;
 }
 
+exports.chargeWaafi = chargeWaafi;
+
 // @desc    Process WaafiPay checkout (full or half / tahy)
 // @route   POST /api/client/checkout/:designId
 // @access  Private/Client
@@ -250,7 +252,11 @@ exports.payRemaining = async (req, res) => {
 // @access  Private/Client
 exports.getPurchases = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ buyer: req.user.id, paymentStatus: 'completed' })
+    const transactions = await Transaction.find({
+      buyer: req.user.id,
+      paymentStatus: 'completed',
+      kind: { $ne: 'customization' }
+    })
       .populate({
         path: 'design',
         populate: {

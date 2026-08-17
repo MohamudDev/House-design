@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
-const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transaction = null, purchaseType = 'full' }) => {
+const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transaction = null, purchaseType = 'full', customization = null }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -12,6 +12,7 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
   const [accountNo, setAccountNo] = useState('');
 
   const isRemaining = mode === 'remaining';
+  const isCustomization = mode === 'customization';
   const optionLabel =
     purchaseType === 'halfA'
       ? (design?.halfA?.label || 'Half A')
@@ -20,11 +21,12 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
         : 'Full house';
 
   const totalPrice = useMemo(() => {
+    if (isCustomization) return round2(customization?.quotedPrice || customization?.payment?.amount || 0);
     if (isRemaining) return round2(transaction?.totalPrice || 100);
     if (purchaseType === 'halfA') return round2(design?.halfA?.price || 0);
     if (purchaseType === 'halfB') return round2(design?.halfB?.price || 0);
     return round2(design?.price || design?.budgetEstimate || 100);
-  }, [transaction, design, purchaseType, isRemaining]);
+  }, [transaction, design, purchaseType, isRemaining, isCustomization, customization]);
   const halfPrice = useMemo(() => round2(totalPrice / 2), [totalPrice]);
   const remainingDue = useMemo(
     () => round2(isRemaining ? (transaction?.amountRemaining || halfPrice) : totalPrice - halfPrice),
@@ -32,9 +34,9 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
   );
   const chargeAmount = isRemaining
     ? remainingDue
-    : paymentPlan === 'half'
-      ? halfPrice
-      : totalPrice;
+    : isCustomization || paymentPlan === 'full'
+      ? totalPrice
+      : halfPrice;
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -54,16 +56,18 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
 
       const { data } = isRemaining
         ? await axios.post(`/api/client/pay-remaining/${transaction._id}`, { accountNo }, config)
-        : await axios.post(
-            `/api/client/checkout/${design._id}`,
-            { accountNo, paymentPlan, purchaseType },
-            config
-          );
+        : isCustomization
+          ? await axios.post(`/api/customizations/${customization._id}/checkout`, { accountNo }, config)
+          : await axios.post(
+              `/api/client/checkout/${design._id}`,
+              { accountNo, paymentPlan, purchaseType },
+              config
+            );
 
       if (data.success) {
         setSuccess(true);
         setTimeout(() => {
-          onSuccess(data.data);
+          onSuccess(isCustomization ? (data.message || data.data) : data.data);
         }, 2000);
       }
     } catch (err) {
@@ -82,7 +86,7 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
               <Smartphone className="text-indigo-600 dark:text-indigo-400" size={20} />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              {isRemaining ? 'Pay Remaining Balance' : 'WaafiPay Checkout'}
+              {isRemaining ? 'Pay Remaining Balance' : isCustomization ? 'Pay Custom Price' : 'WaafiPay Checkout'}
             </h2>
           </div>
           <button
@@ -104,7 +108,9 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
               <p className="text-slate-500 dark:text-slate-400">
                 {isRemaining
                   ? 'Remaining balance has been paid in full.'
-                  : paymentPlan === 'half'
+                  : isCustomization
+                    ? 'Customisation payment is complete. Status is now Paid.'
+                    : paymentPlan === 'half'
                     ? 'Half paid. The other half is left as remaining balance.'
                     : 'You have successfully purchased this design.'}
               </p>
@@ -117,17 +123,19 @@ const PaymentModal = ({ design, onClose, onSuccess, mode = 'checkout', transacti
                 </p>
                 <div className="flex justify-between items-center mb-1">
                   <span className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">
-                    {design?.title || transaction?.design?.title}
+                    {design?.title || customization?.design?.title || transaction?.design?.title}
                   </span>
                   <span className="font-bold text-slate-800 dark:text-white">${totalPrice.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs text-slate-500">
-                  <span>By {design?.engineer?.name || transaction?.design?.engineer?.name || 'Engineer'}</span>
-                  <span className="font-semibold text-indigo-600">{isRemaining ? (transaction?.purchaseType === 'halfA' ? 'Half A' : transaction?.purchaseType === 'halfB' ? 'Half B' : 'Full') : optionLabel}</span>
+                  <span>By {design?.engineer?.name || customization?.engineer?.name || transaction?.design?.engineer?.name || 'Engineer'}</span>
+                  <span className="font-semibold text-indigo-600">
+                    {isCustomization ? 'Customisation' : isRemaining ? (transaction?.purchaseType === 'halfA' ? 'Half A' : transaction?.purchaseType === 'halfB' ? 'Half B' : 'Full') : optionLabel}
+                  </span>
                 </div>
               </div>
 
-              {!isRemaining && (
+              {!isRemaining && !isCustomization && (
                 <div className="mb-6 space-y-2">
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                     Payment option

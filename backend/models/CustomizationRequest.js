@@ -59,9 +59,27 @@ const customizationRequestSchema = new mongoose.Schema({
   proposed: { type: proposedSchema, required: true },
   note: { type: String, default: '' },
   engineerNote: { type: String, default: '' },
+  quotedPrice: { type: Number, default: null },
+  quoteNote: { type: String, default: '' },
+  paymentStatus: {
+    type: String,
+    enum: ['unquoted', 'awaiting_payment', 'paid'],
+    default: 'unquoted',
+    index: true
+  },
+  quoteMessage: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
+  },
+  transaction: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    default: null
+  },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'declined', 'cancelled'],
+    enum: ['pending', 'accepted', 'declined', 'cancelled', 'paid'],
     default: 'pending',
     index: true
   }

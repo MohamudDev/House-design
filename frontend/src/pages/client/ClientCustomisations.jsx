@@ -1,9 +1,10 @@
 import { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Ruler, XCircle, MessageSquare } from 'lucide-react';
+import { Ruler, XCircle, MessageSquare, DollarSign } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import ClientWorkspaceNav from '../../components/client/ClientWorkspaceNav';
+import PaymentModal from '../../components/client/PaymentModal';
 import { AuthContext } from '../../context/AuthContext';
 import { getApiBaseUrl } from '../../utils/apiBase';
 
@@ -11,7 +12,8 @@ const statusStyle = {
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
   accepted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
   declined: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+  cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
 };
 
 const ClientCustomisations = () => {
@@ -22,6 +24,7 @@ const ClientCustomisations = () => {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
   const [openingChat, setOpeningChat] = useState(false);
+  const [payTarget, setPayTarget] = useState(null);
 
   const load = async () => {
     try {
@@ -135,8 +138,8 @@ const ClientCustomisations = () => {
                       {new Date(item.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${statusStyle[item.status]}`}>
-                    {item.status}
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${statusStyle[item.status] || statusStyle.pending}`}>
+                    {item.status === 'paid' ? 'Paid' : item.status}
                   </span>
                 </div>
               </button>
@@ -155,8 +158,8 @@ const ClientCustomisations = () => {
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">
                     {selected.design?.title || selected.originalSnapshot?.title}
                   </h2>
-                  <span className={`inline-block mt-2 text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${statusStyle[selected.status]}`}>
-                    {selected.status}
+                  <span className={`inline-block mt-2 text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${statusStyle[selected.status] || statusStyle.pending}`}>
+                    {selected.status === 'paid' ? 'Paid' : selected.status}
                   </span>
                 </div>
                 <button type="button" onClick={() => setSelected(null)} className="p-2 text-slate-400 hover:text-slate-700">
@@ -240,7 +243,7 @@ const ClientCustomisations = () => {
                 </p>
               )}
 
-              {!selected.engineerNote && ['accepted'].includes(selected.status) && selected.engineer?._id && (
+              {!selected.engineerNote && ['accepted', 'paid'].includes(selected.status) && selected.engineer?._id && (
                 <button
                   type="button"
                   disabled={openingChat}
@@ -250,6 +253,31 @@ const ClientCustomisations = () => {
                   <MessageSquare size={16} />
                   {openingChat ? 'Opening...' : 'Chat with eng'}
                 </button>
+              )}
+
+              {(selected.quotedPrice || selected.status === 'paid') && (
+                <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900 p-4 space-y-2 bg-indigo-50/60 dark:bg-indigo-950/20">
+                  <p className="text-[10px] font-black uppercase text-indigo-500 flex items-center gap-1">
+                    <DollarSign size={12} /> Customisation price
+                  </p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-white">
+                    ${Number(selected.quotedPrice || 0).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Original design price is unchanged. You pay this custom amount only.
+                  </p>
+                  {selected.status === 'paid' ? (
+                    <p className="text-sm font-bold text-emerald-600">Paid</p>
+                  ) : selected.paymentStatus === 'awaiting_payment' ? (
+                    <button
+                      type="button"
+                      onClick={() => setPayTarget(selected)}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold"
+                    >
+                      Pay Now
+                    </button>
+                  ) : null}
+                </div>
               )}
 
               {selected.status === 'pending' && (
@@ -265,6 +293,19 @@ const ClientCustomisations = () => {
           </div>
         )}
       </div>
+      {payTarget && (
+        <PaymentModal
+          mode="customization"
+          customization={payTarget}
+          design={payTarget.design}
+          onClose={() => setPayTarget(null)}
+          onSuccess={async () => {
+            setPayTarget(null);
+            setSelected(null);
+            await load();
+          }}
+        />
+      )}
     </div>
   );
 };

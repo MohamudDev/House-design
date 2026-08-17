@@ -37,6 +37,30 @@ const messageSchema = new mongoose.Schema({
   isEdited: {
     type: Boolean,
     default: false
+  },
+  messageType: {
+    type: String,
+    enum: ['text', 'payment_request'],
+    default: 'text'
+  },
+  payment: {
+    customizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CustomizationRequest',
+      default: null
+    },
+    amount: { type: Number, default: null },
+    currency: { type: String, default: 'USD' },
+    status: {
+      type: String,
+      enum: ['pending', 'paid', 'cancelled'],
+      default: 'pending'
+    },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction',
+      default: null
+    }
   }
 }, {
   timestamps: true

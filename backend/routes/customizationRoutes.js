@@ -7,7 +7,9 @@ const {
   getEngineerCustomizations,
   getCustomization,
   respondCustomization,
-  cancelCustomization
+  cancelCustomization,
+  quoteCustomization,
+  checkoutCustomization
 } = require('../controllers/customizationController');
 
 router.use(protect);
@@ -17,6 +19,8 @@ router.get('/mine', authorize('client'), getMyCustomizations);
 router.get('/engineer', authorize('engineer'), getEngineerCustomizations);
 router.get('/:id', getCustomization);
 router.put('/:id/respond', authorize('engineer'), respondCustomization);
+router.put('/:id/quote', authorize('engineer'), quoteCustomization);
+router.post('/:id/checkout', authorize('client'), checkoutCustomization);
 router.put('/:id/cancel', authorize('client'), cancelCustomization);
 
 module.exports = router;

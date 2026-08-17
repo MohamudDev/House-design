@@ -1,6 +1,13 @@
 const Design = require('../models/Design');
+const User = require('../models/User');
+const Message = require('../models/Message');
+const Transaction = require('../models/Transaction');
 const CustomizationRequest = require('../models/CustomizationRequest');
 const Notification = require('../models/Notification');
+const { chargeWaafi } = require('./paymentController');
+const { syncMessageToCollaboration } = require('../utils/collaborationSync');
+
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 const ROOM_TYPES = new Set(['bedroom', 'bathroom', 'kitchen', 'living', 'master', 'other']);
 
@@ -69,7 +76,7 @@ const validateProposed = (proposed) => {
 
 const populateRequest = (query) =>
   query
-    .populate('design', 'title images houseType houseLength houseWidth houseArea rooms bathrooms')
+    .populate('design', 'title images houseType houseLength houseWidth houseArea rooms bathrooms price')
     .populate('client', 'name email')
     .populate('engineer', 'name email');
 
@@ -272,5 +279,235 @@ exports.cancelCustomization = async (req, res) => {
     res.json({ success: true, data: full });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const populatePaymentMessage = (query) =>
+  query
+    .populate('sender', 'name email role')
+    .populate('receiver', 'name email role')
+    .populate('designId', 'title price');
+
+const emitMessage = (io, receiverId, populatedMessage) => {
+  if (!io || !receiverId) return;
+  const room = receiverId.toString();
+  io.to(room).emit('message received', populatedMessage);
+  io.to(room).emit('new message', populatedMessage);
+};
+
+const emitMessageEdited = (io, userIds, populatedMessage) => {
+  if (!io) return;
+  (userIds || []).filter(Boolean).forEach((id) => {
+    io.to(id.toString()).emit('message edited', populatedMessage);
+  });
+};
+
+// @desc    Engineer sets a custom price and posts a payment card in chat
+// @route   PUT /api/customizations/:id/quote
+// @access  Private/Engineer
+exports.quoteCustomization = async (req, res) => {
+  try {
+    const amount = round2(req.body.amount);
+    const quoteNote = (req.body.note || '').trim();
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid custom price.' });
+    }
+
+    const item = await CustomizationRequest.findById(req.params.id).populate('design', 'title price');
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Request not found.' });
+    }
+    if (item.engineer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized.' });
+    }
+    if (item.status !== 'accepted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Accept the customisation request before setting a custom price.'
+      });
+    }
+    if (item.paymentStatus === 'paid') {
+      return res.status(400).json({ success: false, message: 'This customisation is already paid.' });
+    }
+
+    item.quotedPrice = amount;
+    item.quoteNote = quoteNote;
+    item.paymentStatus = 'awaiting_payment';
+
+    const designTitle = item.design?.title || item.originalSnapshot?.title || 'design';
+    const content = quoteNote
+      ? `Customisation price: $${amount.toFixed(2)}. ${quoteNote}`
+      : `Customisation price: $${amount.toFixed(2)}`;
+
+    let paymentMessage = item.quoteMessage ? await Message.findById(item.quoteMessage) : null;
+
+    if (paymentMessage && paymentMessage.payment?.status !== 'paid') {
+      paymentMessage.content = content;
+      paymentMessage.messageType = 'payment_request';
+      paymentMessage.designId = item.design?._id || item.design;
+      paymentMessage.payment = {
+        customizationId: item._id,
+        amount,
+        currency: 'USD',
+        status: 'pending',
+        transactionId: paymentMessage.payment?.transactionId || null
+      };
+      await paymentMessage.save();
+    } else {
+      paymentMessage = await Message.create({
+        sender: req.user._id,
+        receiver: item.client,
+        designId: item.design?._id || item.design,
+        content,
+        messageType: 'payment_request',
+        payment: {
+          customizationId: item._id,
+          amount,
+          currency: 'USD',
+          status: 'pending'
+        }
+      });
+      item.quoteMessage = paymentMessage._id;
+    }
+
+    await item.save();
+
+    const populatedMessage = await populatePaymentMessage(Message.findById(paymentMessage._id));
+    emitMessage(req.io, item.client, populatedMessage);
+    emitMessageEdited(req.io, [item.client, req.user._id], populatedMessage);
+
+    setImmediate(() => {
+      syncMessageToCollaboration(populatedMessage, 'engineer');
+    });
+
+    const notification = await Notification.create({
+      recipient: item.client,
+      sender: req.user._id,
+      type: 'general',
+      title: 'Customisation price set',
+      message: `The engineer set a custom price of $${amount.toFixed(2)} for "${designTitle}". Pay in chat.`
+    });
+    if (req.io) {
+      req.io.to(item.client.toString()).emit('notification', notification);
+    }
+
+    const full = await populateRequest(CustomizationRequest.findById(item._id));
+    res.json({ success: true, data: full, message: populatedMessage });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Client pays the customisation quoted price (not the original design price)
+// @route   POST /api/customizations/:id/checkout
+// @access  Private/Client
+exports.checkoutCustomization = async (req, res) => {
+  try {
+    const { accountNo } = req.body;
+    if (!accountNo) {
+      return res.status(400).json({ success: false, message: 'Mobile Money Account Number is required' });
+    }
+
+    const item = await CustomizationRequest.findById(req.params.id).populate('design', 'title price engineer');
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Request not found.' });
+    }
+    if (item.client.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized.' });
+    }
+    if (item.paymentStatus === 'paid' || item.status === 'paid') {
+      return res.status(400).json({ success: false, message: 'This customisation is already paid.' });
+    }
+    if (item.status !== 'accepted' || item.paymentStatus !== 'awaiting_payment' || !item.quotedPrice) {
+      return res.status(400).json({ success: false, message: 'No custom price is waiting for payment.' });
+    }
+
+    const amountPaid = round2(item.quotedPrice);
+    const designTitle = item.design?.title || item.originalSnapshot?.title || 'design';
+
+    const waafiData = await chargeWaafi({
+      accountNo,
+      amount: amountPaid,
+      description: `Customisation payment for ${designTitle}`
+    });
+
+    if (!(waafiData && waafiData.responseCode === '2001')) {
+      return res.status(400).json({
+        success: false,
+        message: waafiData?.responseMsg || 'Payment failed via WaafiPay'
+      });
+    }
+
+    const commissionAmount = round2(amountPaid * 0.1);
+    const engineerAmount = round2(amountPaid - commissionAmount);
+
+    const transaction = await Transaction.create({
+      buyer: item.client,
+      engineer: item.engineer,
+      design: item.design._id || item.design,
+      customization: item._id,
+      kind: 'customization',
+      purchaseType: 'full',
+      totalPrice: amountPaid,
+      amountPaid,
+      amountRemaining: 0,
+      paymentPlan: 'full',
+      remainingStatus: 'n/a',
+      commissionAmount,
+      engineerAmount,
+      paymentStatus: 'completed',
+      transactionId: waafiData.params?.transactionId || `WAAFI-CUSTOM-${Date.now()}`
+    });
+
+    await User.findByIdAndUpdate(item.engineer, {
+      $inc: { walletBalance: engineerAmount }
+    });
+
+    item.paymentStatus = 'paid';
+    item.status = 'paid';
+    item.transaction = transaction._id;
+    await item.save();
+
+    let populatedMessage = null;
+    if (item.quoteMessage) {
+      const paymentMessage = await Message.findById(item.quoteMessage);
+      if (paymentMessage) {
+        paymentMessage.payment = {
+          customizationId: item._id,
+          amount: amountPaid,
+          currency: 'USD',
+          status: 'paid',
+          transactionId: transaction._id
+        };
+        paymentMessage.content = `Customisation paid: $${amountPaid.toFixed(2)}`;
+        await paymentMessage.save();
+        populatedMessage = await populatePaymentMessage(Message.findById(paymentMessage._id));
+        emitMessageEdited(req.io, [item.client, item.engineer], populatedMessage);
+      }
+    }
+
+    const notification = await Notification.create({
+      recipient: item.engineer,
+      sender: req.user._id,
+      type: 'payment_received',
+      title: 'Customisation paid',
+      message: `${req.user.name || 'A client'} paid $${amountPaid.toFixed(2)} for customisation of "${designTitle}".`
+    });
+    if (req.io) {
+      req.io.to(item.engineer.toString()).emit('notification', notification);
+    }
+
+    const full = await populateRequest(CustomizationRequest.findById(item._id));
+    res.status(201).json({
+      success: true,
+      data: transaction,
+      customization: full,
+      message: populatedMessage,
+      messageText: 'Customisation payment successful'
+    });
+  } catch (error) {
+    console.error('Customisation checkout error:', error.response?.data || error.message);
+    res.status(500).json({ success: false, message: 'Server error during payment processing' });
   }
 };

@@ -16,6 +16,16 @@ const transactionSchema = new mongoose.Schema({
     ref: 'Design', 
     required: true 
   },
+  customization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CustomizationRequest',
+    default: null
+  },
+  kind: {
+    type: String,
+    enum: ['catalog', 'customization'],
+    default: 'catalog'
+  },
   /** What was purchased: full house, or one half */
   purchaseType: {
     type: String,

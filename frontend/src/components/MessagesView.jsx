@@ -2,9 +2,10 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
-import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star, Mic, Volume2 } from 'lucide-react';
+import { Send, User as UserIcon, Search, MessageSquare, Paperclip, X, Box, ThumbsUp, ThumbsDown, Star, Mic, Volume2, DollarSign } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { getApiBaseUrl } from '../utils/apiBase';
+import PaymentModal from './client/PaymentModal';
 
 const EDIT_WINDOW_MS = 30 * 60 * 1000;
 
@@ -53,6 +54,12 @@ const MessagesView = () => {
   // Message Edit/Delete States
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState('');
+  const [payTarget, setPayTarget] = useState(null);
+  const [quoteAmount, setQuoteAmount] = useState('');
+  const [quoteRequestId, setQuoteRequestId] = useState('');
+  const [quoteable, setQuoteable] = useState([]);
+  const [isQuoting, setIsQuoting] = useState(false);
+  const [showQuoteBar, setShowQuoteBar] = useState(false);
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -147,11 +154,22 @@ const MessagesView = () => {
   useEffect(() => {
     if (socket) {
       const messageHandler = (msg) => {
-        // If the message belongs to the active conversation, append it
-        if (activePartner && (msg.sender._id === activePartner._id || msg.sender === activePartner._id)) {
-          setMessages((prev) => [...prev, msg]);
+        const senderId = msg.sender?._id || msg.sender;
+        const receiverId = msg.receiver?._id || msg.receiver;
+        const involvesActive =
+          activePartner &&
+          (senderId === activePartner._id || receiverId === activePartner._id);
+        if (involvesActive) {
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m._id === msg._id);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = msg;
+              return next;
+            }
+            return [...prev, msg];
+          });
         }
-        // Refresh inbox to update latest message & unread counts
         fetchInbox();
       };
 
@@ -214,6 +232,86 @@ const MessagesView = () => {
       }
     } catch (error) {
       console.error('Error loading conversation:', error);
+    }
+  };
+
+  const upsertMessage = (msg) => {
+    if (!msg?._id) return;
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m._id === msg._id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = msg;
+        return next;
+      }
+      return [...prev, msg];
+    });
+  };
+
+  useEffect(() => {
+    const loadQuoteable = async () => {
+      if (user?.role !== 'engineer' || !activePartner?._id) {
+        setQuoteable([]);
+        setQuoteRequestId('');
+        return;
+      }
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/customizations/engineer`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const list = (data.data || []).filter(
+            (item) =>
+              item.status === 'accepted' &&
+              item.paymentStatus !== 'paid' &&
+              (item.client?._id === activePartner._id || item.client === activePartner._id)
+          );
+          setQuoteable(list);
+          setQuoteRequestId((prev) => (list.some((i) => i._id === prev) ? prev : list[0]?._id || ''));
+        }
+      } catch (err) {
+        console.error('Failed to load customisations for quote:', err);
+      }
+    };
+    loadQuoteable();
+  }, [user?.role, user?.token, activePartner?._id]);
+
+  const handleSendCustomPrice = async (e) => {
+    e.preventDefault();
+    if (!quoteRequestId) {
+      alert('Accept a customisation request first, then set the custom price.');
+      return;
+    }
+    const amount = Number(quoteAmount);
+    if (!amount || amount <= 0) {
+      alert('Enter a valid custom price.');
+      return;
+    }
+    setIsQuoting(true);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/customizations/${quoteRequestId}/quote`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ amount })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.message || 'Failed to send custom price');
+        return;
+      }
+      if (data.message) upsertMessage(data.message);
+      setQuoteAmount('');
+      setShowQuoteBar(false);
+      fetchInbox();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send custom price');
+    } finally {
+      setIsQuoting(false);
     }
   };
 
@@ -424,7 +522,9 @@ const MessagesView = () => {
                     </span>
                   </div>
                   <p className={`text-xs truncate ${convo.unreadCount > 0 ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {convo.latestMessage.attachmentType === 'image' ? '🖼️ Image attached' : 
+                    {convo.latestMessage.messageType === 'payment_request'
+                      ? `${convo.latestMessage.payment?.status === 'paid' ? 'Paid' : 'Payment'} · $${Number(convo.latestMessage.payment?.amount || 0).toFixed(2)}`
+                      : convo.latestMessage.attachmentType === 'image' ? '🖼️ Image attached' : 
                      convo.latestMessage.attachmentType === 'video' ? '🎥 Video attached' : 
                      convo.latestMessage.attachmentType === '3d' ? '📦 3D Model attached' : 
                      convo.latestMessage.attachmentType === 'voice' ? '🎙️ Voice message' :
@@ -478,15 +578,49 @@ const MessagesView = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {messages.map((msg, idx) => {
                 const isMe = msg.sender._id === user._id || msg.sender === user._id;
+                const isPayment = msg.messageType === 'payment_request';
+                const payStatus = msg.payment?.status || 'pending';
+                const payAmount = Number(msg.payment?.amount || 0);
+                const canClientPay = !isMe && user.role === 'client' && payStatus === 'pending' && msg.payment?.customizationId;
                 return (
                   <div key={msg._id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] rounded-2xl px-4 py-3 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-sm'}`}>
+                    <div className={`max-w-[70%] rounded-2xl px-4 py-3 ${isPayment ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-indigo-200 dark:border-indigo-800 shadow-sm' : isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-sm'}`}>
                       {msg.designId && (
-                        <div className={`text-xs font-semibold mb-2 pb-2 border-b ${isMe ? 'border-indigo-500/50' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <div className={`text-xs font-semibold mb-2 pb-2 border-b ${isPayment || !isMe ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-500/50'}`}>
                           Regarding Design: {msg.designId.title || 'Attached Design'}
                         </div>
                       )}
-                      
+
+                      {isPayment ? (
+                        <div className="min-w-[220px] space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-indigo-500">Custom price</p>
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${payStatus === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'}`}>
+                              {payStatus === 'paid' ? 'Paid' : 'Awaiting payment'}
+                            </span>
+                          </div>
+                          <p className="text-2xl font-black text-slate-900 dark:text-white">${payAmount.toFixed(2)}</p>
+                          <p className="text-xs text-slate-500">Original design price is unchanged. Pay this customisation amount only.</p>
+                          {canClientPay && (
+                            <button
+                              type="button"
+                              onClick={() => setPayTarget({
+                                _id: msg.payment.customizationId._id || msg.payment.customizationId,
+                                quotedPrice: payAmount,
+                                design: msg.designId,
+                                engineer: msg.sender
+                              })}
+                              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold"
+                            >
+                              Pay Now
+                            </button>
+                          )}
+                          <div className="text-[10px] text-slate-400 text-right">
+                            {formatMessageTime(msg.createdAt)}
+                          </div>
+                        </div>
+                      ) : (
+                      <>
                       {msg.attachmentUrl && msg.attachmentType === 'image' && (
                         <img 
                           src={`${msg.attachmentUrl}`} 
@@ -581,6 +715,8 @@ const MessagesView = () => {
                           )}
                         </>
                       )}
+                      </>
+                      )}
                     </div>
                   </div>
                 );
@@ -590,6 +726,57 @@ const MessagesView = () => {
 
             {/* Message Input */}
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+              {user.role === 'engineer' && activePartner && (
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuoteBar((v) => !v)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold"
+                  >
+                    <DollarSign size={14} /> Custom price
+                  </button>
+                  {showQuoteBar && (
+                    <form onSubmit={handleSendCustomPrice} className="mt-2 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-white dark:bg-slate-900 space-y-2">
+                      {quoteable.length === 0 ? (
+                        <p className="text-xs text-slate-500">Accept a customisation request from this client first, then set the price here.</p>
+                      ) : (
+                        <>
+                          <select
+                            value={quoteRequestId}
+                            onChange={(e) => setQuoteRequestId(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs dark:text-white"
+                          >
+                            {quoteable.map((item) => (
+                              <option key={item._id} value={item._id}>
+                                {item.design?.title || item.originalSnapshot?.title} · {item.proposed?.houseLength}×{item.proposed?.houseWidth}m
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={quoteAmount}
+                              onChange={(e) => setQuoteAmount(e.target.value)}
+                              placeholder="Custom amount (USD)"
+                              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm dark:text-white"
+                            />
+                            <button
+                              type="submit"
+                              disabled={isQuoting}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50"
+                            >
+                              {isQuoting ? 'Sending...' : 'Send'}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400">Original catalog price stays unchanged. Client pays this custom amount only.</p>
+                        </>
+                      )}
+                    </form>
+                  )}
+                </div>
+              )}
               {filePreview && (
                 <div className="mb-3 flex items-start gap-2 relative inline-block">
                   <div className="relative">
@@ -693,6 +880,24 @@ const MessagesView = () => {
           </div>
         )}
       </div>
+
+      {payTarget && (
+        <PaymentModal
+          mode="customization"
+          customization={payTarget}
+          design={payTarget.design}
+          onClose={() => setPayTarget(null)}
+          onSuccess={(result) => {
+            if (result && result._id && result.payment) {
+              upsertMessage(result);
+            } else if (result?.message) {
+              upsertMessage(result.message);
+            }
+            setPayTarget(null);
+            fetchInbox();
+          }}
+        />
+      )}
 
       {/* Feedback Modal */}
       {showFeedbackModal && (

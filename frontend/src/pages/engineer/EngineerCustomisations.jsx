@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Ruler, Check, X } from 'lucide-react';
+import { Ruler, Check, X, DollarSign, MessageSquare } from 'lucide-react';
 
 const statusStyle = {
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
   accepted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
   declined: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+  cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
 };
 
 const EngineerCustomisations = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
   const [engineerNote, setEngineerNote] = useState('');
   const [responding, setResponding] = useState(false);
+  const [quoteAmount, setQuoteAmount] = useState('');
+  const [quoting, setQuoting] = useState(false);
 
   const load = async () => {
     try {
@@ -61,6 +66,39 @@ const EngineerCustomisations = () => {
     }
   };
 
+  const sendCustomPrice = async () => {
+    if (!selected) return;
+    const amount = Number(quoteAmount);
+    if (!amount || amount <= 0) {
+      alert('Enter a valid custom price.');
+      return;
+    }
+    try {
+      setQuoting(true);
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+      const { data } = await axios.put(
+        `/api/customizations/${selected._id}/quote`,
+        { amount },
+        config
+      );
+      setSelected(data.data);
+      setQuoteAmount('');
+      await load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to send custom price');
+    } finally {
+      setQuoting(false);
+    }
+  };
+
+  const chatWithClient = () => {
+    if (!selected?.client?._id) return;
+    navigate('/engineer-dashboard/messages', {
+      state: { partnerId: selected.client._id, partnerName: selected.client.name }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -102,8 +140,8 @@ const EngineerCustomisations = () => {
                       From {item.client?.name || 'Client'} · {new Date(item.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <span className={`text-[10px] font-black uppercase px-2 py-1 h-fit rounded-full ${statusStyle[item.status]}`}>
-                    {item.status}
+                  <span className={`text-[10px] font-black uppercase px-2 py-1 h-fit rounded-full ${statusStyle[item.status] || statusStyle.pending}`}>
+                    {item.status === 'paid' ? 'Paid' : item.status}
                   </span>
                 </div>
               </button>
@@ -190,9 +228,58 @@ const EngineerCustomisations = () => {
                     </div>
                   </>
                 ) : (
-                  selected.engineerNote && (
-                    <p className="text-sm text-slate-500">Your note: {selected.engineerNote}</p>
-                  )
+                  <>
+                    {selected.engineerNote && (
+                      <p className="text-sm text-slate-500">Your note: {selected.engineerNote}</p>
+                    )}
+                    {selected.status === 'accepted' && (
+                      <div className="space-y-2 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20">
+                        <p className="text-xs font-bold text-indigo-600 uppercase">Set custom price in chat</p>
+                        <p className="text-[11px] text-slate-500">
+                          Original design price ${Number(selected.design?.price || 0).toFixed(2)} stays unchanged.
+                        </p>
+                        {selected.quotedPrice ? (
+                          <p className="text-sm font-bold text-slate-800 dark:text-white">
+                            Current custom price: ${Number(selected.quotedPrice).toFixed(2)}
+                            {selected.paymentStatus === 'awaiting_payment' ? ' · awaiting payment' : ''}
+                          </p>
+                        ) : null}
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={quoteAmount}
+                            onChange={(e) => setQuoteAmount(e.target.value)}
+                            placeholder="Amount USD"
+                            className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={quoting}
+                            onClick={sendCustomPrice}
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-60"
+                          >
+                            <DollarSign size={14} /> {quoting ? 'Sending...' : 'Send'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {selected.status === 'paid' && (
+                      <p className="text-sm font-bold text-emerald-600">
+                        Paid ${Number(selected.quotedPrice || 0).toFixed(2)}
+                      </p>
+                    )}
+                    {selected.client?._id && ['accepted', 'paid', 'declined'].includes(selected.status) && (
+                      <button
+                        type="button"
+                        onClick={chatWithClient}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold"
+                      >
+                        <MessageSquare size={16} /> Open chat
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
